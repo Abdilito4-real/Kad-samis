@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth-provider";
 import { useUnreadNotifications } from "@/hooks/useUnreadNotifications";
 import { displayIdentity } from "@/lib/displayIdentity";
+import { Avatar, AvatarInitials } from "@/components/ui/avatar";
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
@@ -175,7 +176,7 @@ export function getNavigationGroupsForRole(roleId?: string | null): NavigationGr
   return organizationAdminNavigationGroups;
 }
 
-const ROLE_LABELS: Record<string, string> = {
+export const ROLE_LABELS: Record<string, string> = {
   super_admin: "Super Admin",
   agency_admin: "Agency Admin",
   ministry_admin: "Ministry Admin",
@@ -188,13 +189,6 @@ const ROLE_LABELS: Record<string, string> = {
   finance_officer: "Finance Officer",
   operational_manager: "Operational Manager",
   read_only_user: "Read-Only User",
-};
-
-const getInitials = (value: string) => {
-  const parts = value.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 };
 
 export interface DashboardSidebarProps {
@@ -350,9 +344,9 @@ export function DashboardSidebar({ mobileOpen = false, onMobileClose }: Dashboar
         onClick={onMobileClose}
         className="mt-3 flex items-center gap-3 rounded-2xl border border-border bg-card px-3 py-2.5 transition-colors hover:border-primary/40"
       >
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-primary/50 bg-primary/10 text-xs font-semibold text-primary">
-          {getInitials(displayName)}
-        </div>
+        <Avatar>
+          <AvatarInitials name={displayName} />
+        </Avatar>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold leading-none">{roleLabel}</p>
           <p className="mt-1 truncate text-xs text-muted-foreground">{identity}</p>

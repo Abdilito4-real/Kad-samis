@@ -6,8 +6,31 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarInitials } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { displayIdentity } from "@/lib/displayIdentity";
+import { ROLE_LABELS } from "@/components/dashboard-sidebar";
 import { useUnreadNotifications } from "@/hooks/useUnreadNotifications";
-import { Bell, CalendarDays, Command, LogOut, Menu, Moon, Sun, Circle, Building2 } from "lucide-react";
+import {
+  Bell,
+  CalendarDays,
+  Command,
+  LogOut,
+  Menu,
+  Moon,
+  Search,
+  Settings,
+  Sun,
+  Circle,
+  Building2,
+} from "lucide-react";
 
 interface DashboardHeaderProps {
   onOpenCommandPalette: () => void;
@@ -26,6 +49,14 @@ export function DashboardHeader({ onOpenCommandPalette, onOpenMobileMenu }: Dash
   // Real-time unread count (and the "new request"/"new assignment" etc. toast
   // that goes with it) — see useUnreadNotifications for the realtime wiring.
   const unreadNotificationCount = useUnreadNotifications();
+
+  const identity = user
+    ? displayIdentity({ email: user.email, username: user.username, role: user.roleId })
+    : "Account";
+  const displayName = user?.firstName
+    ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ""}`
+    : identity;
+  const roleLabel = user?.roleId ? ROLE_LABELS[user.roleId] ?? user.roleId.replace(/_/g, " ") : "Guest";
 
   useEffect(() => {
     setMounted(true);
@@ -110,6 +141,18 @@ export function DashboardHeader({ onOpenCommandPalette, onOpenMobileMenu }: Dash
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Icon-only on mobile — the old "Quick search" trigger was hidden
+              below `sm` with nothing replacing it, so the command palette
+              was unreachable from the header on phones. */}
+          <Button
+            variant="outline"
+            size="icon-lg"
+            aria-label="Search"
+            className="sm:hidden"
+            onClick={onOpenCommandPalette}
+          >
+            <Search className="h-4 w-4" />
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -146,10 +189,38 @@ export function DashboardHeader({ onOpenCommandPalette, onOpenMobileMenu }: Dash
               ) : null}
             </Link>
           </Button>
-          <Button variant="outline" size="sm" onClick={handleSignOut}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign Out
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="Account menu"
+                className="flex h-12 items-center gap-2 rounded-full border border-border bg-background/70 py-1 pl-1 pr-2 transition hover:border-primary/40 sm:pr-3"
+              >
+                <Avatar className="h-8 w-8">
+                  <AvatarInitials name={displayName} />
+                </Avatar>
+                <span className="hidden text-sm font-medium sm:inline">{roleLabel}</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel className="normal-case">
+                <p className="text-sm font-semibold text-foreground">{roleLabel}</p>
+                <p className="mt-0.5 truncate text-xs font-normal text-muted-foreground">{identity}</p>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/settings">
+                  <Settings className="h-4 w-4" />
+                  Settings
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleSignOut}>
+                <LogOut className="h-4 w-4" />
+                Sign Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>
