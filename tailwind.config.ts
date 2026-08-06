@@ -11,6 +11,13 @@ const config = {
   ],
   theme: {
     extend: {
+      // Additive only — keeps the default sm/md/lg/xl/2xl scale (640/768/1024/1280/1536)
+      // that ~90 existing sm:/md:/lg:/xl: usages already rely on, and adds an `xs`
+      // breakpoint for the smallest phones (320px) the mobile-first pass targets.
+      screens: {
+        xs: "320px",
+        ...defaultTheme.screens,
+      },
       fontFamily: {
         sans: ["var(--font-sans)", ...defaultTheme.fontFamily.sans],
       },

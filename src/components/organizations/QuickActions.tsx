@@ -263,7 +263,7 @@ export default function QuickActions({
       </Card>
 
       <Dialog open={notificationDialogOpen} onOpenChange={setNotificationDialogOpen}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>Send Notification</DialogTitle>
             <DialogDescription>

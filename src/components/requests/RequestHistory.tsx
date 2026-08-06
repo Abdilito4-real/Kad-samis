@@ -346,7 +346,7 @@ export function RequestHistory({ orgId }: RequestHistoryProps) {
       )}
 
       <Dialog open={escalateDialogOpen} onOpenChange={setEscalateDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Escalate Request</DialogTitle>
             <DialogDescription>

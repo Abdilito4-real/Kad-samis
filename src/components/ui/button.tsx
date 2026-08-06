@@ -23,6 +23,10 @@ const buttonVariants = cva(
         sm: "h-9 rounded-md px-3",
         lg: "h-11 rounded-md px-8",
         icon: "h-10 w-10",
+        /** 48x48px — meets the touch-target minimum for icon-only buttons on
+         * mobile (row actions, header icons). Opt-in and additive: existing
+         * `size="icon"` (40px) call sites are untouched by this addition. */
+        "icon-lg": "h-12 w-12",
       },
     },
     defaultVariants: {

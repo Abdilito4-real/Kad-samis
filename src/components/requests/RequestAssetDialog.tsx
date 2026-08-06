@@ -52,7 +52,7 @@ export function RequestAssetDialog({
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg" onClick={(e) => e.stopPropagation()}>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Request Maintenance / Repair</DialogTitle>
             <DialogDescription>
