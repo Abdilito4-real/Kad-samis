@@ -28,7 +28,7 @@ export default function MdasLayout({ children }: { children: React.ReactNode }) 
         <DashboardSidebar mobileOpen={mobileMenuOpen} onMobileClose={() => setMobileMenuOpen(false)} />
         <div className="flex flex-1 flex-col lg:ml-72">
           <DashboardHeader onOpenCommandPalette={() => setCommandPaletteOpen(true)} onOpenMobileMenu={() => setMobileMenuOpen(true)} />
-          <main className="flex-1 overflow-auto bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.12),_transparent_28%),linear-gradient(180deg,_rgba(248,250,252,0.96),_rgba(241,245,249,0.96))] dark:bg-background dark:bg-none">
+          <main className="flex-1 overflow-auto bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.12),_transparent_28%),linear-gradient(180deg,_rgba(248,250,252,0.96),_rgba(241,245,249,0.96))] p-4 sm:p-6 lg:p-8 dark:bg-background dark:bg-none">
             {children}
             <div className="h-20 lg:hidden" aria-hidden />
           </main>

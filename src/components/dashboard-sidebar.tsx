@@ -164,7 +164,16 @@ const operationalManagerNavigationGroups: NavigationGroup[] = [
   },
 ];
 
-export const navigationGroups = organizationAdminNavigationGroups;
+/**
+ * Role-aware nav groups — the single source of truth for "what modules can this
+ * user see", shared by the sidebar itself and the command palette (Ctrl/Cmd+K).
+ * Keep this in sync with the `isSuperAdmin`/`isOperationalManager` branching below.
+ */
+export function getNavigationGroupsForRole(roleId?: string | null): NavigationGroup[] {
+  if (roleId === "super_admin") return superAdminNavigationGroups;
+  if (roleId === "operational_manager") return operationalManagerNavigationGroups;
+  return organizationAdminNavigationGroups;
+}
 
 const ROLE_LABELS: Record<string, string> = {
   super_admin: "Super Admin",
@@ -205,11 +214,7 @@ export function DashboardSidebar({ mobileOpen = false, onMobileClose }: Dashboar
   const unreadNotificationCount = useUnreadNotifications();
   const isSuperAdmin = user?.roleId === "super_admin";
   const isOperationalManager = user?.roleId === "operational_manager";
-  const activeNavigationGroups = isSuperAdmin
-    ? superAdminNavigationGroups
-    : isOperationalManager
-      ? operationalManagerNavigationGroups
-      : organizationAdminNavigationGroups;
+  const activeNavigationGroups = getNavigationGroupsForRole(user?.roleId);
 
   const filteredGroups = useMemo(() => {
     const value = query.trim().toLowerCase();

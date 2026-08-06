@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Search, Sparkles } from "lucide-react";
-import { navigationGroups } from "@/components/dashboard-sidebar";
+import { getNavigationGroupsForRole } from "@/components/dashboard-sidebar";
+import { useAuth } from "@/components/auth-provider";
 
 interface CommandPaletteProps {
   open: boolean;
@@ -12,7 +13,9 @@ interface CommandPaletteProps {
 
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const router = useRouter();
+  const { user } = useAuth();
   const [query, setQuery] = useState("");
+  const navigationGroups = useMemo(() => getNavigationGroupsForRole(user?.roleId), [user?.roleId]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -45,7 +48,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
     return flattened.filter((item) =>
       `${item.group} ${item.name}`.toLowerCase().includes(query.toLowerCase())
     );
-  }, [query]);
+  }, [query, navigationGroups]);
 
   if (!open) {
     return null;
