@@ -1,0 +1,94 @@
+
+> kad-samis@1.0.0 build
+> next build
+
+   ▲ Next.js 15.5.4
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 106s
+   Linting and checking validity of types ...
+
+./src/app/auth/login/LoginPageContent.tsx
+129:19  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+141:19  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+166:19  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./src/app/page.tsx
+135:17  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+280:17  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+445:15  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./src/components/dashboard-sidebar.tsx
+293:9  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
+   Collecting page data ...
+[Error [PageNotFoundError]: Cannot find module for page: /admin/organizations/edit] {
+  code: 'ENOENT'
+}
+[Error [PageNotFoundError]: Cannot find module for page: /_not-found] {
+  code: 'ENOENT'
+}
+[Error [PageNotFoundError]: Cannot find module for page: /admin/organizations/create] {
+  code: 'ENOENT'
+}
+[Error [PageNotFoundError]: Cannot find module for page: /admin/audit-logs] {
+  code: 'ENOENT'
+}
+[Error [PageNotFoundError]: Cannot find module for page: /admin/organizations/[id]] {
+  code: 'ENOENT'
+}
+[Error [PageNotFoundError]: Cannot find module for page: /admin/super-admin-dashboard] {
+  code: 'ENOENT'
+}
+[Error [PageNotFoundError]: Cannot find module for page: /api/admin/asset-categories] {
+  code: 'ENOENT'
+}
+[Error [PageNotFoundError]: Cannot find module for page: /api/admin/assets/[id]] {
+  code: 'ENOENT'
+}
+[Error [PageNotFoundError]: Cannot find module for page: /api/admin/assets] {
+  code: 'ENOENT'
+}
+[Error [PageNotFoundError]: Cannot find module for page: /api/admin/check-user-org] {
+  code: 'ENOENT'
+}
+[Error [PageNotFoundError]: Cannot find module for page: /api/admin/create-organization] {
+  code: 'ENOENT'
+}
+[Error [PageNotFoundError]: Cannot find module for page: /api/admin/debug-assets] {
+  code: 'ENOENT'
+}
+[Error [PageNotFoundError]: Cannot find module for page: /api/admin/debug-profile] {
+  code: 'ENOENT'
+}
+[Error [PageNotFoundError]: Cannot find module for page: /api/admin/maintenance] {
+  code: 'ENOENT'
+}
+[Error [PageNotFoundError]: Cannot find module for page: /api/admin/organizations/[id]/metrics] {
+  code: 'ENOENT'
+}
+[Error [PageNotFoundError]: Cannot find module for page: /api/admin/organizations/[id]] {
+  code: 'ENOENT'
+}
+[Error [PageNotFoundError]: Cannot find module for page: /api/admin/organizations] {
+  code: 'ENOENT'
+}
+[Error [PageNotFoundError]: Cannot find module for page: /api/admin/profiles/[id]] {
+  code: 'ENOENT'
+}
+[Error [PageNotFoundError]: Cannot find module for page: /api/admin/profiles] {
+  code: 'ENOENT'
+}
+[Error [PageNotFoundError]: Cannot find module for page: /api/admin/reports] {
+  code: 'ENOENT'
+}
+[Error [PageNotFoundError]: Cannot find module for page: /api/admin/requests/[id]/approve] {
+  code: 'ENOENT'
+}
+
+> Build error occurred
+[Error: Failed to collect page data for /admin/organizations/edit] {
+  type: 'Error'
+}
