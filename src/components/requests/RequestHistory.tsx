@@ -271,7 +271,7 @@ export function RequestHistory({ orgId }: RequestHistoryProps) {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3">
-                    <h4 className="font-semibold text-slate-900 dark:text-slate-50 truncate">
+                    <h4 className="min-w-0 flex-1 truncate font-semibold text-slate-900 dark:text-slate-50">
                       {request.title}
                     </h4>
                     {statusIcons[request.status]}

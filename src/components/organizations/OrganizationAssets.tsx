@@ -153,11 +153,11 @@ export default function OrganizationAssets({ orgId }: { orgId: string }) {
         <div className="space-y-3">
           {filteredAssets.map(asset => (
             <Card key={asset.id} className="p-4 hover:shadow-md transition">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    <Package className="w-5 h-5 text-muted-foreground" />
-                    <h4 className="font-semibold">{asset.name}</h4>
+                    <Package className="w-5 h-5 shrink-0 text-muted-foreground" />
+                    <h4 className="min-w-0 flex-1 truncate font-semibold">{asset.name}</h4>
                   </div>
                   <p className="text-sm text-muted-foreground mb-3">
                     Tag: {asset.asset_tag || asset.assetNumber || 'N/A'} • Category: {asset.category || 'N/A'}

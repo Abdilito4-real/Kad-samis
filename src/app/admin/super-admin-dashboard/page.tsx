@@ -208,12 +208,12 @@ export default function SuperAdminDashboard() {
           {organizationMetrics.map((org) => (
             <Card key={org.organizationId} className="p-6 transition-shadow hover:shadow-lg">
               <div className="space-y-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className="font-semibold text-foreground">{org.organizationName}</p>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold text-foreground">{org.organizationName}</p>
                     <p className="text-sm text-muted-foreground">{org.assetCount} assets</p>
                   </div>
-                  <Building2 className="h-5 w-5 text-primary" />
+                  <Building2 className="h-5 w-5 shrink-0 text-primary" />
                 </div>
 
                 <div className="space-y-2 border-t border-border pt-4">
@@ -246,17 +246,17 @@ export default function SuperAdminDashboard() {
           <div className="space-y-2">
             {pendingRequests.map((request) => (
               <Card key={request.id} className="p-4 transition-colors hover:bg-accent">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <FileCheck className="h-5 w-5 text-primary" />
-                    <div>
-                      <p className="font-medium text-foreground">{request.title}</p>
-                      <p className="text-sm text-muted-foreground">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 flex-1 items-center gap-4">
+                    <FileCheck className="h-5 w-5 shrink-0 text-primary" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-foreground">{request.title}</p>
+                      <p className="truncate text-sm text-muted-foreground">
                         {request.organizations?.name || getOrgName((request as any).organization_id)} • {new Date(request.created_at).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
-                  <Button asChild size="sm">
+                  <Button asChild size="sm" className="shrink-0">
                     <a href={`/requests/${request.id}`}>Review</a>
                   </Button>
                 </div>

@@ -142,8 +142,8 @@ export default function OrganizationRequests({ orgId }: { orgId: string }) {
           {filteredRequests.map(request => (
             <Card key={request.id} className="p-4 hover:shadow-md transition">
               <div className="flex items-start justify-between gap-4 mb-3">
-                <div className="flex-1">
-                  <h4 className="font-semibold mb-1">{request.title}</h4>
+                <div className="min-w-0 flex-1">
+                  <h4 className="truncate font-semibold mb-1">{request.title}</h4>
                   {request.description && (
                     <p className="text-sm text-muted-foreground line-clamp-2">{request.description}</p>
                   )}

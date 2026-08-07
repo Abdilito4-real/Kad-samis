@@ -143,11 +143,11 @@ export default function OrganizationDrawer({
       <SheetContent side="right" className="w-full max-w-md gap-0 overflow-y-auto p-0" hideClose>
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-start justify-between border-b border-border bg-background p-6">
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Organization Details
             </p>
-            <h2 className="text-2xl font-bold mt-2">{org.name}</h2>
+            <h2 className="mt-2 break-words text-2xl font-bold">{org.name}</h2>
             <div className="flex items-center gap-2 mt-2">
               <Badge className={typeColor}>{org.organization_type}</Badge>
               <Badge className={statusColor}>{org.status?.toUpperCase() || 'ACTIVE'}</Badge>

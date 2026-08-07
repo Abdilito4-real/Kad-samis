@@ -87,8 +87,8 @@ function UserRow({ user, onUsernameSaved }: { user: Profile; onUsernameSaved: (i
           </Button>
         </div>
       ) : (
-        <div className="flex items-center gap-1.5">
-          <p className="font-medium truncate">{displayIdentity(user)}</p>
+        <div className="flex min-w-0 items-center gap-1.5">
+          <p className="min-w-0 flex-1 truncate font-medium">{displayIdentity(user)}</p>
           {usesUsername && (
             <button
               type="button"

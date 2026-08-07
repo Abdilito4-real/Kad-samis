@@ -127,11 +127,11 @@ export default function OrganizationActivity({ orgId }: { orgId: string }) {
       {activities.map((request) => (
         <Card key={request.id} className="p-4 hover:shadow-md transition">
           <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
+            <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <span className="text-2xl">{typeIcon[request.type] || '📝'}</span>
-                <div>
-                  <p className="font-semibold">{request.title}</p>
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{request.title}</p>
                   <p className="text-sm text-muted-foreground">
                     {typeLabels[request.type] || request.type.replace(/_/g, ' ')} • {request.status}
                   </p>

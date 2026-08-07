@@ -135,14 +135,14 @@ export default function OrganizationAdministrators({ org, onUpdate }: { org: Org
           <div className="space-y-3">
             {admins.map(admin => (
               <div key={admin.id} className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 transition">
-                <div className="flex items-center gap-3 flex-1">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">
+                <div className="flex min-w-0 items-center gap-3 flex-1">
+                  <div className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">
                     {admin.email?.charAt(0).toUpperCase()}
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-muted-foreground" />
-                      {admin.email}
+                  <div className="min-w-0 flex-1">
+                    <p className="flex items-center gap-2 text-sm font-medium">
+                      <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="min-w-0 flex-1 truncate">{admin.email}</span>
                     </p>
                     <Badge className={getRoleColor(admin.role)}>
                       <Shield className="w-3 h-3 mr-1" />

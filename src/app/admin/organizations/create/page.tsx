@@ -175,8 +175,8 @@ export default function CreateOrganizationPage() {
               <p className="text-sm text-muted-foreground">Review the details below before creating this organization.</p>
               <div className="space-y-3 rounded-2xl border border-border bg-muted/40 p-4 text-sm">
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-muted-foreground">Name</span>
-                  <span className="font-medium text-foreground">{org.name || '—'}</span>
+                  <span className="shrink-0 text-muted-foreground">Name</span>
+                  <span className="min-w-0 truncate font-medium text-foreground">{org.name || '—'}</span>
                 </div>
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-muted-foreground">Type</span>
