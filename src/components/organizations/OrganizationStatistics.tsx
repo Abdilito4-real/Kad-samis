@@ -362,9 +362,12 @@ export default function OrganizationStatistics({ orgId }: { orgId: string }) {
                     legend: { display: false },
                     // Percentage labels make sense on the larger depreciation
                     // chart but clutter a chart this small — the list beside
-                    // it already carries the exact numbers.
-                    sliceLabelPlugin: false as any,
-                  },
+                    // it already carries the exact numbers. `sliceLabelPlugin`
+                    // is the custom plugin registered above (line 122) — cast
+                    // the whole options object since @types/chart.js has no
+                    // way to know about a plugin id it didn't define.
+                    sliceLabelPlugin: false,
+                  } as any,
                 }}
               />
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
