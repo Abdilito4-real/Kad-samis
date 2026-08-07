@@ -9,7 +9,7 @@ import { DashboardSidebar } from "@/components/dashboard-sidebar";
 import { CommandPalette } from "@/components/command-palette";
 import { useAuth } from "@/components/auth-provider";
 import { cn } from "@/lib/utils";
-import { Bell, Home, Package, Settings, Wrench, type LucideIcon } from "lucide-react";
+import { Bell, Home, Landmark, Package, Settings, Wrench, type LucideIcon } from "lucide-react";
 
 interface BottomNavItem {
   name: string;
@@ -25,6 +25,16 @@ const DEFAULT_BOTTOM_NAV: BottomNavItem[] = [
   { name: "System", href: "/settings", icon: Settings },
 ];
 
+// Super admins get Organizations (/mdas) in place of Alerts — org_admin and
+// operational_manager accounts don't have access to that route, so only
+// this role's bottom nav swaps it in.
+const SUPER_ADMIN_BOTTOM_NAV: BottomNavItem[] = [
+  { name: "Home", href: "/dashboard", icon: Home },
+  { name: "Assets", href: "/assets", icon: Package },
+  { name: "Organizations", href: "/mdas", icon: Landmark },
+  { name: "System", href: "/settings", icon: Settings },
+];
+
 // operational_manager accounts don't use /assets directly — mirrors the one
 // layout (operations/layout.tsx) that previously carried its own array.
 const OPERATIONAL_MANAGER_BOTTOM_NAV: BottomNavItem[] = [
@@ -36,6 +46,7 @@ const OPERATIONAL_MANAGER_BOTTOM_NAV: BottomNavItem[] = [
 
 function getBottomNavForRole(roleId?: string | null): BottomNavItem[] {
   if (roleId === "operational_manager") return OPERATIONAL_MANAGER_BOTTOM_NAV;
+  if (roleId === "super_admin") return SUPER_ADMIN_BOTTOM_NAV;
   return DEFAULT_BOTTOM_NAV;
 }
 

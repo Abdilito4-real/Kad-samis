@@ -60,24 +60,14 @@ export function DashboardHeader({ onOpenCommandPalette, onOpenMobileMenu }: Dash
     setMounted(true);
   }, []);
 
-  const breadcrumbs = useMemo(() => {
+  // Just the current page's own name — a full "Dashboard / Assets / ..."
+  // trail wasn't adding navigation value here (there's no way to jump to an
+  // intermediate level anyway) and ate header width on mobile.
+  const currentPageLabel = useMemo(() => {
     const segments = pathname.split("/").filter(Boolean);
-    const crumbs = segments.map((segment, index) => ({
-      label: segment.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()),
-      href: `/${segments.slice(0, index + 1).join("/")}`,
-    }));
-
-    if (!crumbs.length) {
-      return [{ label: "Dashboard", href: "/dashboard" }];
-    }
-
-    // Already on /dashboard — don't prepend another "Dashboard" root crumb,
-    // that produced a redundant "Dashboard / Dashboard" breadcrumb.
-    if (segments[0] === "dashboard") {
-      return crumbs;
-    }
-
-    return [{ label: "Dashboard", href: "/dashboard" }, ...crumbs];
+    const last = segments[segments.length - 1];
+    if (!last) return "Dashboard";
+    return last.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
   }, [pathname]);
 
   const handleSignOut = async () => {
@@ -118,20 +108,7 @@ export function DashboardHeader({ onOpenCommandPalette, onOpenMobileMenu }: Dash
             </Button>
           ) : null}
         <div className="min-w-0 flex-1 sm:space-y-2">
-          {/* overflow-x-auto (scrollbar hidden) instead of flex-wrap — keeps
-              the header a single row even when a route segment is long (a
-              detail-page id), scrolling that one row instead of wrapping the
-              whole header onto a second line. */}
-          <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap text-sm text-muted-foreground [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {breadcrumbs.map((crumb, index) => (
-              <div key={`${crumb.href}-${index}`} className="flex shrink-0 items-center gap-2">
-                {index > 0 ? <span className="text-muted-foreground/50">/</span> : null}
-                <span className={index === breadcrumbs.length - 1 ? "font-semibold text-primary" : ""}>
-                  {crumb.label}
-                </span>
-              </div>
-            ))}
-          </div>
+          <p className="truncate text-base font-semibold text-primary sm:text-lg">{currentPageLabel}</p>
           {/* Status pills — hidden below sm, where three pills next to
               breadcrumbs just ate the row; still useful once there's room. */}
           <div className="hidden flex-wrap items-center gap-3 text-xs text-muted-foreground sm:flex">
