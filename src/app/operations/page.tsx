@@ -10,6 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Loader2, ChevronRight, Wrench, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { StageProgressBar, type Stage } from "@/components/requests/StageProgressBar";
+import {
+  ResponsiveList,
+  ResponsiveListRow,
+  ResponsiveListDetailGrid,
+  ResponsiveListField,
+} from "@/components/layout/ResponsiveList";
 
 interface OperationRequest {
   id: string;
@@ -127,52 +133,49 @@ export default function OperationsPage() {
           </p>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <ResponsiveList>
           {requests.map((request) => (
-            <Card
+            <ResponsiveListRow
               key={request.id}
-              className="p-6 hover:shadow-md transition-shadow cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/50"
               onClick={() => router.push(`/requests/${request.id}`)}
             >
-              <div className="space-y-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-slate-900 dark:text-slate-50 truncate">
-                      {request.title}
-                    </h4>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                      {request.description}
-                    </p>
-                  </div>
-                  <ChevronRight className="h-5 w-5 text-slate-400 flex-shrink-0 mt-1" />
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-semibold text-slate-900 dark:text-slate-50 truncate">
+                    {request.title}
+                  </h4>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                    {request.description}
+                  </p>
                 </div>
-
-                <StageProgressBar currentStage={request.current_stage} />
-
-                {isSuperAdmin && !viewingSingleOperator && (
-                  <Badge className="bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-300">
-                    {request.assigned_operator?.username || request.assigned_operator?.email || "Unassigned"}
-                  </Badge>
-                )}
-
-                <div className="grid gap-4 text-sm sm:grid-cols-3">
-                  <div>
-                    <p className="text-slate-600 dark:text-slate-400">Organization</p>
-                    <p className="font-medium">{request.organizations?.name || "Organization unavailable"}</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-600 dark:text-slate-400">Submitted</p>
-                    <p className="font-medium">{new Date(request.created_at).toLocaleDateString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-600 dark:text-slate-400">Last Updated</p>
-                    <p className="font-medium">{new Date(request.updated_at).toLocaleDateString()}</p>
-                  </div>
-                </div>
+                <ChevronRight className="h-5 w-5 text-slate-400 flex-shrink-0 mt-1" />
               </div>
-            </Card>
+
+              <StageProgressBar currentStage={request.current_stage} />
+
+              {isSuperAdmin && !viewingSingleOperator && (
+                <Badge className="bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-300">
+                  {request.assigned_operator?.username || request.assigned_operator?.email || "Unassigned"}
+                </Badge>
+              )}
+
+              <ResponsiveListDetailGrid cols={3}>
+                <ResponsiveListField
+                  label="Organization"
+                  value={request.organizations?.name || "Organization unavailable"}
+                />
+                <ResponsiveListField
+                  label="Submitted"
+                  value={new Date(request.created_at).toLocaleDateString()}
+                />
+                <ResponsiveListField
+                  label="Last Updated"
+                  value={new Date(request.updated_at).toLocaleDateString()}
+                />
+              </ResponsiveListDetailGrid>
+            </ResponsiveListRow>
           ))}
-        </div>
+        </ResponsiveList>
       )}
     </div>
   );

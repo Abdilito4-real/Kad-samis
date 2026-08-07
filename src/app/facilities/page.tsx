@@ -3,6 +3,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ResponsiveGrid } from "@/components/layout/ResponsiveGrid";
+import { MetricCard } from "@/components/layout/MetricCard";
+import { ResponsiveList, ResponsiveListRow } from "@/components/layout/ResponsiveList";
 import { Plus, Building2, MapPin, Landmark, DoorOpen } from "lucide-react";
 
 const FACILITY_STATUS_BADGE: Record<string, string> = {
@@ -30,26 +33,15 @@ export default function FacilitiesPage() {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <ResponsiveGrid cols={{ base: 1, md: 3, xl: 3 }}>
         {[
           { title: "Active facilities", value: "27", icon: Building2 },
           { title: "Departments covered", value: "16", icon: Landmark },
           { title: "Rooms tracked", value: "184", icon: DoorOpen },
-        ].map((item) => {
-          const Icon = item.icon;
-          return (
-            <Card key={item.title}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">{item.title}</CardTitle>
-                <Icon className="h-4 w-4 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-semibold">{item.value}</div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+        ].map((item) => (
+          <MetricCard key={item.title} title={item.title} value={item.value} icon={item.icon} />
+        ))}
+      </ResponsiveGrid>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -57,25 +49,27 @@ export default function FacilitiesPage() {
           <p className="text-sm text-muted-foreground">Manage location and occupancy data</p>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
+          <ResponsiveList>
             {facilities.map((facility) => (
-              <div key={facility.name} className="min-w-0 rounded-2xl border border-border bg-background/70 p-4 sm:flex sm:items-center sm:justify-between sm:gap-3">
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{facility.name}</p>
-                  <p className="truncate text-sm text-muted-foreground">{facility.type}</p>
+              <ResponsiveListRow key={facility.name}>
+                <div className="sm:flex sm:items-center sm:justify-between sm:gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{facility.name}</p>
+                    <p className="truncate text-sm text-muted-foreground">{facility.type}</p>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-3 sm:mt-0 sm:shrink-0">
+                    <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <MapPin className="h-4 w-4 shrink-0" />
+                      {facility.location}
+                    </span>
+                    <Badge className={`${FACILITY_STATUS_BADGE[facility.status] ?? "bg-muted text-muted-foreground"}`}>
+                      {facility.status}
+                    </Badge>
+                  </div>
                 </div>
-                <div className="mt-2 flex flex-wrap items-center gap-3 sm:mt-0 sm:shrink-0">
-                  <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <MapPin className="h-4 w-4 shrink-0" />
-                    {facility.location}
-                  </span>
-                  <Badge className={`${FACILITY_STATUS_BADGE[facility.status] ?? "bg-muted text-muted-foreground"}`}>
-                    {facility.status}
-                  </Badge>
-                </div>
-              </div>
+              </ResponsiveListRow>
             ))}
-          </div>
+          </ResponsiveList>
         </CardContent>
       </Card>
     </div>

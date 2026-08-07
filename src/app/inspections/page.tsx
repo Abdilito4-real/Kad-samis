@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ResponsiveGrid } from "@/components/layout/ResponsiveGrid";
+import { MetricCard } from "@/components/layout/MetricCard";
+import { ResponsiveList, ResponsiveListRow } from "@/components/layout/ResponsiveList";
 import { Plus, ClipboardCheck, CalendarClock, MapPin, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -80,22 +83,11 @@ export default function InspectionsPage() {
         <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-sm text-rose-500">{error}</div>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {stats.map((item) => {
-          const Icon = item.icon;
-          return (
-            <Card key={item.title}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">{item.title}</CardTitle>
-                <Icon className="h-4 w-4 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-semibold">{loading ? "—" : item.value}</div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+      <ResponsiveGrid cols={{ base: 1, md: 3, xl: 3 }}>
+        {stats.map((item) => (
+          <MetricCard key={item.title} title={item.title} value={loading ? "—" : item.value} icon={item.icon} />
+        ))}
+      </ResponsiveGrid>
 
       <Card>
         <CardHeader>
@@ -109,31 +101,33 @@ export default function InspectionsPage() {
           ) : inspections.length === 0 ? (
             <p className="py-8 text-sm text-muted-foreground">No inspections have been recorded yet.</p>
           ) : (
-            <div className="space-y-3">
+            <ResponsiveList>
               {inspections.map((inspection) => (
-                <div key={inspection.id} className="min-w-0 rounded-2xl border border-border bg-background/70 p-4 sm:flex sm:items-center sm:justify-between sm:gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{inspection.asset?.name || inspection.asset?.asset_number || "Asset"}</p>
-                    <p className="truncate text-sm text-muted-foreground">
-                      {new Date(inspection.inspection_date).toLocaleDateString()}
-                      {inspection.notes ? ` · ${inspection.notes}` : ""}
-                    </p>
+                <ResponsiveListRow key={inspection.id}>
+                  <div className="sm:flex sm:items-center sm:justify-between sm:gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{inspection.asset?.name || inspection.asset?.asset_number || "Asset"}</p>
+                      <p className="truncate text-sm text-muted-foreground">
+                        {new Date(inspection.inspection_date).toLocaleDateString()}
+                        {inspection.notes ? ` · ${inspection.notes}` : ""}
+                      </p>
+                    </div>
+                    <div className="mt-2.5 flex flex-wrap items-center gap-2 sm:mt-0 sm:shrink-0">
+                      {inspection.gps_verified ? (
+                        <span className="flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
+                          <MapPin className="h-3 w-3" /> GPS verified
+                        </span>
+                      ) : null}
+                      {inspection.condition ? (
+                        <Badge className={`${CONDITION_TONE[inspection.condition.toLowerCase()] ?? "bg-muted text-muted-foreground"} capitalize`}>
+                          {inspection.condition}
+                        </Badge>
+                      ) : null}
+                    </div>
                   </div>
-                  <div className="mt-2.5 flex flex-wrap items-center gap-2 sm:mt-0 sm:shrink-0">
-                    {inspection.gps_verified ? (
-                      <span className="flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
-                        <MapPin className="h-3 w-3" /> GPS verified
-                      </span>
-                    ) : null}
-                    {inspection.condition ? (
-                      <Badge className={`${CONDITION_TONE[inspection.condition.toLowerCase()] ?? "bg-muted text-muted-foreground"} capitalize`}>
-                        {inspection.condition}
-                      </Badge>
-                    ) : null}
-                  </div>
-                </div>
+                </ResponsiveListRow>
               ))}
-            </div>
+            </ResponsiveList>
           )}
         </CardContent>
       </Card>
