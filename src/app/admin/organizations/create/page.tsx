@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, ArrowRight, Building2, Save } from 'lucide-react';
 
 type Step = 1 | 2 | 3;
@@ -108,16 +109,19 @@ export default function CreateOrganizationPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="org-type">Type</Label>
-                <select
-                  id="org-type"
+                <Select
                   value={org.organization_type}
-                  onChange={(e) => setOrg({ ...org, organization_type: e.target.value })}
-                  className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
+                  onValueChange={(value) => setOrg({ ...org, organization_type: value })}
                 >
-                  <option value="MINISTRY">Ministry</option>
-                  <option value="DEPARTMENT">Department</option>
-                  <option value="AGENCY">Agency</option>
-                </select>
+                  <SelectTrigger id="org-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="MINISTRY">Ministry</SelectItem>
+                    <SelectItem value="DEPARTMENT">Department</SelectItem>
+                    <SelectItem value="AGENCY">Agency</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">

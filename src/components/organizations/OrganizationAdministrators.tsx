@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Plus, Save, X, Trash2, Mail, Shield } from 'lucide-react';
 
@@ -188,18 +189,18 @@ export default function OrganizationAdministrators({ org, onUpdate }: { org: Org
 
             <div className="space-y-2">
               <Label htmlFor="admin-role">Role</Label>
-              <select
-                id="admin-role"
-                value={newAdmin.role}
-                onChange={e => setNewAdmin(prev => ({ ...prev, role: e.target.value }))}
-                className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
-              >
-                {roleOptions.map(role => (
-                  <option key={role.value} value={role.value}>
-                    {role.label}
-                  </option>
-                ))}
-              </select>
+              <Select value={newAdmin.role} onValueChange={(value) => setNewAdmin((prev) => ({ ...prev, role: value }))}>
+                <SelectTrigger id="admin-role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {roleOptions.map((role) => (
+                    <SelectItem key={role.value} value={role.value}>
+                      {role.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex justify-end gap-2 pt-4">

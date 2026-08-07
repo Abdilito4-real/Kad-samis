@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { createClient } from '@/lib/supabase/client';
 import { Package, Search } from 'lucide-react';
 import { toast } from 'sonner';
@@ -125,18 +126,19 @@ export default function OrganizationAssets({ orgId }: { orgId: string }) {
             className="pl-10"
           />
         </div>
-        <select
-          value={filterCondition}
-          onChange={e => setFilterCondition(e.target.value)}
-          className="rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
-        >
-          <option value="all">All Conditions</option>
-          <option value="excellent">Excellent</option>
-          <option value="good">Good</option>
-          <option value="fair">Fair</option>
-          <option value="poor">Poor</option>
-          <option value="damaged">Damaged</option>
-        </select>
+        <Select value={filterCondition} onValueChange={setFilterCondition}>
+          <SelectTrigger className="w-full sm:w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Conditions</SelectItem>
+            <SelectItem value="excellent">Excellent</SelectItem>
+            <SelectItem value="good">Good</SelectItem>
+            <SelectItem value="fair">Fair</SelectItem>
+            <SelectItem value="poor">Poor</SelectItem>
+            <SelectItem value="damaged">Damaged</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Assets List */}
