@@ -255,7 +255,7 @@ export function DashboardSidebar({ mobileOpen = false, onMobileClose }: Dashboar
           className="h-10 w-10 rounded-xl object-cover"
         />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold leading-none">KAD-SAMIS</p>
+          <p className="text-sm font-semibold leading-none">Kadsamis</p>
           <p className="mt-1 text-xs text-muted-foreground">
             {isSuperAdmin ? "System administration" : isOperationalManager ? "Field operations" : "Enterprise operations"}
           </p>

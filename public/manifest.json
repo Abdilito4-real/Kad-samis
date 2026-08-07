@@ -1,7 +1,7 @@
 {
   "id": "/dashboard",
-  "name": "Kaduna State Asset Management Information System",
-  "short_name": "KAD-SAMIS",
+  "name": "Kadsamis",
+  "short_name": "Kadsamis",
   "description": "Manage government assets, maintenance requests, and approvals across Kaduna State's ministries, departments, and agencies.",
   "start_url": "/dashboard",
   "scope": "/",

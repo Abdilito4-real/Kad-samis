@@ -12,12 +12,19 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
       <head>
+        <title>Kadsamis</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta
           name="description"
-          content="Kaduna State Asset Management Information System"
+          content="Kadsamis — Kaduna State Asset Management Information System"
         />
         <meta name="theme-color" content="#ffffff" />
+        <meta name="application-name" content="Kadsamis" />
+        {/* Home-screen/window label on iOS and installed-PWA title bars on
+            desktop both read this instead of falling back to the manifest
+            name every time — same reason the manifest name/short_name were
+            shortened to match. */}
+        <meta name="apple-mobile-web-app-title" content="Kadsamis" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="icon" href="/favicon.ico" />
         {/* iOS "Add to Home Screen" doesn't read manifest.json icons — it needs

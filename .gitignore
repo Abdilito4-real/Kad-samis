@@ -18,7 +18,9 @@ coverage/
 .nyc_output/
 *.pem
 .vercel/
-public/sw.js
+# public/sw.js is hand-written source (see its own header comment), not a
+# generated build artifact — it must be tracked or a fresh clone silently
+# ships without push notifications or PWA installability.
 public/workbox-*.js
 
 tsconfig.tsbuildinfo

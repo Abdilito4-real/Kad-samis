@@ -113,7 +113,7 @@ export default function SuperAdminDashboard() {
     <div className="space-y-8">
       <div className="space-y-2">
         <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Super Admin Dashboard</h1>
-        <p className="text-muted-foreground">Monitor all organizations, assets, and approvals across KAD-SAMIS</p>
+        <p className="text-muted-foreground">Monitor all organizations, assets, and approvals across Kadsamis</p>
       </div>
 
       {/* Key Metrics */}

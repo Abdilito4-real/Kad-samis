@@ -179,7 +179,7 @@ export default function LoginPageContent() {
                   <img src="/images/auth/kaduna-state.svg" alt="Kaduna State logo" className="h-full w-full rounded-2xl object-cover" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="truncate text-lg font-semibold text-foreground sm:text-xl">KAD-SAMIS</h2>
+                  <h2 className="truncate text-lg font-semibold text-foreground sm:text-xl">Kadsamis</h2>
                   <p className="truncate text-xs text-muted-foreground sm:text-sm">Government asset management</p>
                 </div>
               </div>

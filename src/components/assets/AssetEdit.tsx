@@ -7,6 +7,7 @@ import { AssetForm, type AssetFormValues } from "@/components/assets/AssetForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RequestAssetDialog } from "@/components/requests/RequestAssetDialog";
 import { useAuth } from "@/components/auth-provider";
+import { createClient } from "@/lib/supabase/client";
 
 interface AssetEditProps {
   asset: {
@@ -40,9 +41,18 @@ export function AssetEdit({ asset }: AssetEditProps) {
   };
 
   const handleSubmit = async (values: AssetFormValues) => {
+    const supabase = createClient();
+    const { data: { session } } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
+    if (!session?.access_token) {
+      throw new Error("Please sign in to save changes");
+    }
+
     const response = await fetch(`/api/admin/assets/${asset.id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
       body: JSON.stringify(values),
     });
 
@@ -61,8 +71,16 @@ export function AssetEdit({ asset }: AssetEditProps) {
       return;
     }
 
+    const supabase = createClient();
+    const { data: { session } } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
+    if (!session?.access_token) {
+      toast.error("Please sign in to delete this asset");
+      return;
+    }
+
     const response = await fetch(`/api/admin/assets/${asset.id}`, {
       method: "DELETE",
+      headers: { Authorization: `Bearer ${session.access_token}` },
     });
 
     const json = await response.json();

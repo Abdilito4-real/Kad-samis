@@ -33,7 +33,7 @@
   }
 
   /* Near-black dashboard theme with an emerald accent, matching the
-     KAD-SAMIS dark-mode reference design. */
+     Kadsamis dark-mode reference design. */
   .dark {
     color-scheme: dark;
     --background: 0 0% 5%;

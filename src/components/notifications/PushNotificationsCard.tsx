@@ -37,7 +37,7 @@ export function PushNotificationsCard() {
         await subscribeToPush();
         setPushEnabled(true);
         toast.success("Push notifications enabled", {
-          description: "You'll get an alert on this device even when KAD-SAMIS isn't open.",
+          description: "You'll get an alert on this device even when Kadsamis isn't open.",
         });
       }
     } catch (err: any) {
@@ -56,7 +56,7 @@ export function PushNotificationsCard() {
           <p className="font-medium">Push notifications</p>
           <p className="text-sm text-muted-foreground">
             {pushEnabled
-              ? "Enabled on this device — you'll get alerts here even when KAD-SAMIS isn't open."
+              ? "Enabled on this device — you'll get alerts here even when Kadsamis isn't open."
               : "Get an alert on this device the moment something needs your attention, even if the app is closed."}
           </p>
         </div>

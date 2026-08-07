@@ -23,6 +23,7 @@ import {
   Wrench,
   X,
 } from "lucide-react";
+import { DownloadAppButton } from "@/components/download-app-button";
 
 const navLinks = [
   { href: "#about", label: "About" },
@@ -139,7 +140,7 @@ export default function Home() {
                 <img src="/images/auth/kaduna-state.svg" alt="Kaduna State logo" className="h-full w-full rounded-full object-cover" />
               </div>
               <div>
-                <p className="text-sm font-semibold tracking-[0.2em] text-foreground">KAD-SAMIS</p>
+                <p className="text-sm font-semibold tracking-[0.2em] text-foreground">Kadsamis</p>
                 <p className="hidden text-xs text-muted-foreground sm:block">Kaduna State Digital Portal</p>
               </div>
             </div>
@@ -153,6 +154,7 @@ export default function Home() {
             </nav>
 
             <div className="flex items-center gap-2">
+              <DownloadAppButton variant="outline" className="hidden sm:inline-flex" />
               <a
                 href="/auth/login"
                 className="rounded-full bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 sm:px-4"
@@ -202,7 +204,7 @@ export default function Home() {
               Official Government Digital Platform
             </div>
             <h1 className="mt-6 text-4xl font-semibold leading-tight sm:text-5xl lg:text-6xl">
-              Kaduna State Asset Management Information System
+              Kadsamis
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-muted-foreground">
               A centralized enterprise platform for registering, monitoring, maintaining, auditing, and managing government assets across Kaduna State ministries, departments, and agencies.
@@ -229,6 +231,7 @@ export default function Home() {
               >
                 Access Secure Portal <ArrowRight className="h-4 w-4" />
               </Link>
+              <DownloadAppButton variant="outline" className="px-6 py-3" />
               <a
                 href="#features"
                 className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-6 py-3 text-sm font-semibold text-foreground transition hover:border-emerald-400/40 hover:text-emerald-500"
@@ -316,7 +319,7 @@ export default function Home() {
               </div>
             </div>
             <p className="max-w-2xl text-sm leading-7 text-muted-foreground">
-              In partnership with the Kaduna State Government, KAD-SAMIS provides a secure and modern foundation for public asset stewardship.
+              In partnership with the Kaduna State Government, Kadsamis provides a secure and modern foundation for public asset stewardship.
             </p>
           </div>
         </section>
@@ -446,7 +449,7 @@ export default function Home() {
                 </div>
                 <h3 className="mt-4 text-lg font-semibold">{reason}</h3>
                 <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                  Public asset management becomes more transparent, measurable, and responsive with KAD-SAMIS.
+                  Public asset management becomes more transparent, measurable, and responsive with Kadsamis.
                 </p>
               </div>
             ))}
@@ -478,7 +481,7 @@ export default function Home() {
             </div>
             <div>
               <p className="font-semibold text-foreground">Kaduna State Government</p>
-              <p>KADFAMA • KAD-SAMIS</p>
+              <p>KADFAMA • Kadsamis</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-5">

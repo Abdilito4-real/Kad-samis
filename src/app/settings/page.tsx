@@ -176,7 +176,7 @@ export default function SettingsPage() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Shown across KAD-SAMIS instead of your email, since {formatRole(user?.roleId).toLowerCase()} accounts are identified by username.
+                  Shown across Kadsamis instead of your email, since {formatRole(user?.roleId).toLowerCase()} accounts are identified by username.
                 </p>
               </div>
             )}
@@ -231,7 +231,7 @@ export default function SettingsPage() {
           <div className="flex flex-col gap-3 rounded-2xl border border-border bg-background/70 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="font-medium">Landing page after sign-in</p>
-              <p className="text-sm text-muted-foreground">Where KAD-SAMIS takes you right after you log in.</p>
+              <p className="text-sm text-muted-foreground">Where Kadsamis takes you right after you log in.</p>
             </div>
             <Select value={defaultView} onValueChange={handleDefaultViewChange}>
               <SelectTrigger className="w-full sm:w-48">
