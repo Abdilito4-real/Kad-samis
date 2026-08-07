@@ -484,7 +484,11 @@ export default function DashboardPage() {
 
       {isSuperAdmin ? (
         <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-          <Card>
+          {/* min-w-0 on each grid item — without it, a CSS Grid item defaults to
+              min-width: auto, so a track will grow past its container to fit
+              wide content (long org names here) instead of shrinking/wrapping,
+              forcing the whole page into horizontal scroll. */}
+          <Card className="min-w-0">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Agency performance</CardTitle>
               <Link href="/mdas" className="text-sm font-medium text-primary hover:underline">
@@ -557,7 +561,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="min-w-0">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Pending approvals</CardTitle>
               <Link href="/requests" className="text-sm font-medium text-primary hover:underline">
@@ -601,7 +605,7 @@ export default function DashboardPage() {
       ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <Card>
+        <Card className="min-w-0">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Recent requests</CardTitle>
             <div className="flex items-center gap-1 text-sm text-muted-foreground">
@@ -635,7 +639,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle>Asset snapshot</CardTitle>
           </CardHeader>

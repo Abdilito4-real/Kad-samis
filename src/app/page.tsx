@@ -279,15 +279,15 @@ export default function Home() {
                     <span>Asset map</span>
                     <span>Live status</span>
                   </div>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-[1.25fr_0.75fr]">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <div className="mt-3 grid min-w-0 gap-2 sm:grid-cols-[1.25fr_0.75fr]">
+                    <div className="min-w-0 rounded-2xl border border-white/10 bg-white/5 p-3">
                       <div className="flex items-center gap-2 text-sm text-slate-200">
                         <MapPinned className="h-4 w-4 text-emerald-400" />
                         Kaduna State asset distribution
                       </div>
                       <div className="mt-3 h-24 rounded-xl bg-[radial-gradient(circle_at_20%_20%,_rgba(16,185,129,0.4),_transparent_35%),linear-gradient(135deg,_#0f172a,_#122d4f)]" />
                     </div>
-                    <div className="space-y-2">
+                    <div className="min-w-0 space-y-2">
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                         <p className="text-sm text-slate-200">Inspections due</p>
                         <p className="mt-1 text-xl font-semibold">24</p>
@@ -376,7 +376,7 @@ export default function Home() {
         </section>
 
         <section className="mt-20 grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
-          <div className="rounded-[32px] border border-border bg-card/80 p-8 shadow-sm">
+          <div className="min-w-0 rounded-[32px] border border-border bg-card/80 p-8 shadow-sm">
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-primary">Enterprise Security</p>
             <h2 className="mt-3 text-3xl font-semibold">Trusted by public institutions</h2>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -389,7 +389,7 @@ export default function Home() {
           </div>
 
           {/* Deliberately dark mockup, same as the operations panel above. */}
-          <div className="rounded-[32px] border border-white/10 bg-[linear-gradient(135deg,_#06120e,_#0b2a22_45%,_#0f172a)] p-6 text-white shadow-[0_24px_70px_rgba(2,8,23,0.26)]">
+          <div className="min-w-0 rounded-[32px] border border-white/10 bg-[linear-gradient(135deg,_#06120e,_#0b2a22_45%,_#0f172a)] p-6 text-white shadow-[0_24px_70px_rgba(2,8,23,0.26)]">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-300">Dashboard Preview</p>
@@ -400,7 +400,7 @@ export default function Home() {
               </div>
             </div>
             <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_0.9fr]">
-              <div className="rounded-[24px] border border-white/10 bg-black/30 p-4">
+              <div className="min-w-0 rounded-[24px] border border-white/10 bg-black/30 p-4">
                 <div className="flex items-center justify-between text-sm text-slate-300">
                   <span>Live dashboards</span>
                   <span>Secure</span>
@@ -419,7 +419,7 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-              <div className="space-y-3">
+              <div className="min-w-0 space-y-3">
                 <div className="rounded-[20px] border border-white/10 bg-white/5 p-4">
                   <p className="text-sm text-slate-300">Departments</p>
                   <p className="mt-2 text-3xl font-semibold">300+</p>
