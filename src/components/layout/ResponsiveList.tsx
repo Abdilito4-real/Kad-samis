@@ -40,10 +40,27 @@ const ResponsiveListRow = React.forwardRef<HTMLDivElement, ResponsiveListRowProp
   ({ className, onClick, children, ...props }, ref) => {
     const interactive = Boolean(onClick);
 
+    // A literal `role="..."` attribute plus a spread object whose type also
+    // declares `role` is a TS JSX error ("specified more than once") — build
+    // the whole role/interactivity prop set in one place instead so there's
+    // only ever one spread supplying it.
+    const interactiveProps = interactive
+      ? {
+          role: "button" as const,
+          tabIndex: 0,
+          onClick,
+          onKeyDown: (event: React.KeyboardEvent) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onClick?.();
+            }
+          },
+        }
+      : { role: "listitem" as const };
+
     return (
       <Card
         ref={ref}
-        role="listitem"
         // min-h-12 (48px) satisfies the touch-target minimum for the row itself
         // when it's the clickable unit (e.g. navigate-to-detail rows).
         className={cn(
@@ -51,19 +68,7 @@ const ResponsiveListRow = React.forwardRef<HTMLDivElement, ResponsiveListRowProp
           interactive && "cursor-pointer hover:border-primary/40 hover:bg-accent/40",
           className
         )}
-        {...(interactive
-          ? {
-              onClick,
-              role: "button",
-              tabIndex: 0,
-              onKeyDown: (event: React.KeyboardEvent) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  onClick?.();
-                }
-              },
-            }
-          : {})}
+        {...interactiveProps}
         {...props}
       >
         <div className="space-y-3">{children}</div>
