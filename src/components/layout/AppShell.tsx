@@ -68,7 +68,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <ProtectedRoute>
       <div className="flex min-h-screen bg-slate-50/70 text-foreground transition-colors dark:bg-background dark:bg-none">
         <DashboardSidebar mobileOpen={mobileMenuOpen} onMobileClose={() => setMobileMenuOpen(false)} />
-        <div className="flex flex-1 flex-col lg:ml-72">
+        <div className="flex min-w-0 flex-1 flex-col lg:ml-72">
           <DashboardHeader
             onOpenCommandPalette={() => setCommandPaletteOpen(true)}
             onOpenMobileMenu={() => setMobileMenuOpen(true)}
