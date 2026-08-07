@@ -2,9 +2,11 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import { Building2, Check, Copy, Eye, EyeOff, RefreshCw, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const STEP_LABELS = ['Organization', 'Administrator', 'Review & submit'];
 
@@ -126,17 +128,14 @@ export default function CreateOrganizationDialog({ open, onClose, onCreated }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
-      <div
-        className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
-        onClick={canClose ? handleClose : undefined}
-      />
-      <motion.div
-        initial={{ opacity: 0, y: 16, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.2, ease: 'easeOut' }}
-        className="relative z-10 w-full max-w-xl overflow-hidden rounded-[2rem] border border-border bg-background shadow-2xl"
-      >
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && !canClose) return;
+        if (!next) onClose();
+      }}
+    >
+      <DialogContent className="w-full max-w-xl gap-0 overflow-hidden rounded-[2rem] p-0" hideClose>
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div className="flex items-start gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-500">
@@ -209,21 +208,24 @@ export default function CreateOrganizationDialog({ open, onClose, onCreated }: {
                   </label>
                   <label className="space-y-2">
                     <span className="text-sm font-medium text-foreground">Organization type</span>
-                    <select
+                    <Select
                       value={type}
-                      onChange={(e) => {
-                        const nextType = e.target.value;
+                      onValueChange={(nextType) => {
                         setType(nextType);
                         if (!roleTouched) {
                           setAdminRole(TYPE_TO_ROLE[nextType] || adminRole);
                         }
                       }}
-                      className="w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
                     >
-                      <option value="MINISTRY">MINISTRY</option>
-                      <option value="DEPARTMENT">DEPARTMENT</option>
-                      <option value="AGENCY">AGENCY</option>
-                    </select>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="MINISTRY">MINISTRY</SelectItem>
+                        <SelectItem value="DEPARTMENT">DEPARTMENT</SelectItem>
+                        <SelectItem value="AGENCY">AGENCY</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </label>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
@@ -335,18 +337,22 @@ export default function CreateOrganizationDialog({ open, onClose, onCreated }: {
                   </label>
                   <label className="space-y-2">
                     <span className="text-sm font-medium text-foreground">Role</span>
-                    <select
+                    <Select
                       value={adminRole}
-                      onChange={(e) => {
+                      onValueChange={(value) => {
                         setRoleTouched(true);
-                        setAdminRole(e.target.value);
+                        setAdminRole(value);
                       }}
-                      className="w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
                     >
-                      <option value="ministry_admin">Ministry Admin</option>
-                      <option value="department_admin">Department Admin</option>
-                      <option value="agency_admin">Agency Admin</option>
-                    </select>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ministry_admin">Ministry Admin</SelectItem>
+                        <SelectItem value="department_admin">Department Admin</SelectItem>
+                        <SelectItem value="agency_admin">Agency Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <p className="text-xs text-muted-foreground">
                       {roleTouched ? 'Manually set — change the organization type to re-sync.' : `Matched to ${type.toLowerCase()} automatically.`}
                     </p>
@@ -446,7 +452,7 @@ export default function CreateOrganizationDialog({ open, onClose, onCreated }: {
             )}
           </div>
         </form>
-      </motion.div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

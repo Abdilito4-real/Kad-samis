@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
 import { X, Mail, Phone, MapPin, Package, Edit2, Trash2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
 type Org = {
@@ -138,24 +139,8 @@ export default function OrganizationDrawer({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-stretch justify-end">
-      {/* Backdrop */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Drawer */}
-      <motion.aside
-        initial={{ x: '100%' }}
-        animate={{ x: 0 }}
-        exit={{ x: '100%' }}
-        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="relative z-10 w-full max-w-md bg-background shadow-2xl overflow-y-auto"
-      >
+    <Sheet open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+      <SheetContent side="right" className="w-full max-w-md gap-0 overflow-y-auto p-0" hideClose>
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-start justify-between border-b border-border bg-background p-6">
           <div className="flex-1">
@@ -213,15 +198,19 @@ export default function OrganizationDrawer({
                     </label>
                     <label className="space-y-2">
                       <span className="text-sm font-medium">Type</span>
-                      <select
+                      <Select
                         value={formValues.organization_type}
-                        onChange={(event) => setFormValues((prev) => ({ ...prev, organization_type: event.target.value }))}
-                        className="w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
+                        onValueChange={(value) => setFormValues((prev) => ({ ...prev, organization_type: value }))}
                       >
-                        <option value="MINISTRY">MINISTRY</option>
-                        <option value="DEPARTMENT">DEPARTMENT</option>
-                        <option value="AGENCY">AGENCY</option>
-                      </select>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="MINISTRY">MINISTRY</SelectItem>
+                          <SelectItem value="DEPARTMENT">DEPARTMENT</SelectItem>
+                          <SelectItem value="AGENCY">AGENCY</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </label>
                   </div>
                   <div className="grid gap-4 md:grid-cols-2">
@@ -253,15 +242,19 @@ export default function OrganizationDrawer({
                   </label>
                   <label className="space-y-2">
                     <span className="text-sm font-medium">Status</span>
-                    <select
+                    <Select
                       value={formValues.status}
-                      onChange={(event) => setFormValues((prev) => ({ ...prev, status: event.target.value }))}
-                      className="w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
+                      onValueChange={(value) => setFormValues((prev) => ({ ...prev, status: value }))}
                     >
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                      <option value="pending">Pending</option>
-                    </select>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </label>
                   <div className="flex gap-2">
                     <Button type="submit" className="gap-2" disabled={saving}>
@@ -386,7 +379,7 @@ export default function OrganizationDrawer({
             </div>
           </div>
         </div>
-      </motion.aside>
-    </div>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -8,6 +8,8 @@ import LoadingSkeleton from '@/components/mdas/LoadingSkeleton';
 import OrganizationCard from '@/components/mdas/OrganizationCard';
 import OrganizationDrawer from '@/components/mdas/OrganizationDrawer';
 import CreateOrganizationDialog from '@/components/mdas/CreateOrganizationDialog';
+import { ResponsiveGrid } from '@/components/layout/ResponsiveGrid';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/auth-provider';
 import { createClient } from '@/lib/supabase/client';
@@ -258,14 +260,14 @@ export default function MdasPage() {
             </div>
           </section>
 
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+          <ResponsiveGrid cols={{ base: 1, md: 2, xl: 6 }}>
             <StatsCard title="Total Organizations" value={orgs.length} icon={<LayoutDashboard className="h-6 w-6" />} tone="neutral" />
             <StatsCard title="Ministries" value={(grouped['MINISTRY'] || []).length} icon={<Building2 className="h-6 w-6" />} tone="emerald" />
             <StatsCard title="Departments" value={(grouped['DEPARTMENT'] || []).length} icon={<LayoutDashboard className="h-6 w-6" />} tone="sky" />
             <StatsCard title="Agencies" value={(grouped['AGENCY'] || []).length} icon={<Globe2 className="h-6 w-6" />} tone="amber" />
             <StatsCard title="Administrators" value={orgs.reduce((sum, org) => sum + (org.profiles?.length || 0), 0)} icon={<Users className="h-6 w-6" />} tone="violet" />
             <StatsCard title="Pending Requests" value={pendingRequests} icon={<Mail className="h-6 w-6" />} tone="rose" />
-          </section>
+          </ResponsiveGrid>
 
           {/* Toolbar: search, filters, and actions each get their own row so the
               hierarchy reads top-to-bottom instead of competing for space. */}
@@ -285,48 +287,48 @@ export default function MdasPage() {
 
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="grid flex-1 gap-3 sm:grid-cols-3">
-                  <label className="rounded-3xl border border-input bg-background px-4 py-3">
-                    <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">Organization</span>
-                    <select
-                      value={typeFilter}
-                      onChange={(e) => { setTypeFilter(e.target.value); setPageIndex(1); }}
-                      className="mt-2 block w-full border-none bg-transparent text-sm outline-none"
-                      aria-label="Filter by organization type"
-                    >
-                      <option value="ALL">All types</option>
-                      <option value="MINISTRY">Ministry</option>
-                      <option value="DEPARTMENT">Department</option>
-                      <option value="AGENCY">Agency</option>
-                    </select>
-                  </label>
-                  <label className="rounded-3xl border border-input bg-background px-4 py-3">
-                    <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">Status</span>
-                    <select
-                      value={statusFilter}
-                      onChange={(e) => { setStatusFilter(e.target.value); setPageIndex(1); }}
-                      className="mt-2 block w-full border-none bg-transparent text-sm outline-none"
-                      aria-label="Filter by status"
-                    >
-                      <option value="ALL">All statuses</option>
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                      <option value="pending">Pending</option>
-                    </select>
-                  </label>
-                  <label className="rounded-3xl border border-input bg-background px-4 py-3">
-                    <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">Sort</span>
-                    <select
-                      value={sort}
-                      onChange={(e) => setSort(e.target.value)}
-                      className="mt-2 block w-full border-none bg-transparent text-sm outline-none"
-                      aria-label="Sort organizations"
-                    >
-                      <option value="newest">Newest first</option>
-                      <option value="oldest">Oldest first</option>
-                      <option value="az">A - Z</option>
-                      <option value="updated">Recently updated</option>
-                    </select>
-                  </label>
+                  <div className="space-y-1.5">
+                    <span className="px-1 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">Organization</span>
+                    <Select value={typeFilter} onValueChange={(value) => { setTypeFilter(value); setPageIndex(1); }}>
+                      <SelectTrigger aria-label="Filter by organization type" className="rounded-3xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">All types</SelectItem>
+                        <SelectItem value="MINISTRY">Ministry</SelectItem>
+                        <SelectItem value="DEPARTMENT">Department</SelectItem>
+                        <SelectItem value="AGENCY">Agency</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <span className="px-1 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">Status</span>
+                    <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setPageIndex(1); }}>
+                      <SelectTrigger aria-label="Filter by status" className="rounded-3xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">All statuses</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <span className="px-1 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">Sort</span>
+                    <Select value={sort} onValueChange={setSort}>
+                      <SelectTrigger aria-label="Sort organizations" className="rounded-3xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="newest">Newest first</SelectItem>
+                        <SelectItem value="oldest">Oldest first</SelectItem>
+                        <SelectItem value="az">A - Z</SelectItem>
+                        <SelectItem value="updated">Recently updated</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div className="flex shrink-0 items-center gap-3">
