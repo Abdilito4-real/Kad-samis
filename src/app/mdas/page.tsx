@@ -231,9 +231,9 @@ export default function MdasPage() {
   return (
     <>
       <div className="space-y-6 p-4 sm:p-6 lg:p-8">
-          <section className="rounded-[2rem] border border-border bg-card px-6 py-6 shadow-sm">
+          <section className="rounded-[2rem] border border-border bg-card px-4 py-5 shadow-sm sm:px-6 sm:py-6">
             <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
-              <div className="space-y-4">
+              <div className="min-w-0 space-y-4">
                 <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                   <Link href="/dashboard" className="inline-flex items-center gap-2 rounded-full border border-border bg-background/80 px-3 py-1 text-xs font-medium text-primary transition hover:bg-primary/5">
                     Dashboard
@@ -244,8 +244,8 @@ export default function MdasPage() {
                   <span className="font-semibold text-foreground">MDAs</span>
                 </div>
                 <div className="space-y-3">
-                  <h1 className="text-4xl font-semibold tracking-tight">Ministries, Departments & Agencies</h1>
-                  <p className="max-w-3xl text-base text-muted-foreground">Manage every Ministry, Department and Agency registered within Kaduna State, with fast access to administrators, assets, status, and control actions.</p>
+                  <h1 className="break-words text-2xl font-semibold tracking-tight sm:text-3xl xl:text-4xl">Ministries, Departments & Agencies</h1>
+                  <p className="max-w-3xl text-sm text-muted-foreground sm:text-base">Manage every Ministry, Department and Agency registered within Kaduna State, with fast access to administrators, assets, status, and control actions.</p>
                 </div>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -271,7 +271,7 @@ export default function MdasPage() {
 
           {/* Toolbar: search, filters, and actions each get their own row so the
               hierarchy reads top-to-bottom instead of competing for space. */}
-          <section className="rounded-[2rem] border border-border bg-card p-6 shadow-sm">
+          <section className="rounded-[2rem] border border-border bg-card p-4 shadow-sm sm:p-6">
             <div className="space-y-5">
               <div className="relative">
                 <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -351,7 +351,7 @@ export default function MdasPage() {
             </div>
           </section>
 
-          <section className="rounded-[2rem] border border-border bg-card p-6 shadow-sm">
+          <section className="rounded-[2rem] border border-border bg-card p-4 shadow-sm sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-3">
                 {(['ALL', 'MINISTRY', 'DEPARTMENT', 'AGENCY'] as const).map((tab) => {

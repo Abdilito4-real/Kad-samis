@@ -397,7 +397,7 @@ export default function DashboardPage() {
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        className="overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-card via-card to-background p-6 shadow-xl"
+        className="overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-card via-card to-background p-4 shadow-xl sm:p-6"
       >
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           {showBackToSuperAdmin ? (
@@ -412,13 +412,13 @@ export default function DashboardPage() {
               </button>
             </div>
           ) : null}
-          <div className="flex flex-1 items-start gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-primary/50 bg-primary/10 text-lg font-semibold text-primary shadow-lg">
+          <div className="flex flex-1 items-start gap-3 sm:gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-primary/50 bg-primary/10 text-base font-semibold text-primary shadow-lg sm:h-14 sm:w-14 sm:text-lg">
               {getInitials(userName)}
             </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">{dashboardTitle}</p>
-              <h1 className="mt-2 text-3xl font-semibold text-foreground">Welcome back, {userName}</h1>
+            <div className="min-w-0">
+              <p className="truncate text-xs font-semibold uppercase tracking-[0.3em] text-primary">{dashboardTitle}</p>
+              <h1 className="mt-2 break-words text-xl font-semibold text-foreground sm:text-2xl lg:text-3xl">Welcome back, {userName}</h1>
               <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
                 {isLoadingDashboard
                   ? "Loading your dashboard summary…"

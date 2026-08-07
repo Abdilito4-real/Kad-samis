@@ -217,7 +217,7 @@ export default function RequestDetailPage() {
   }
 
   return (
-    <div className="min-h-screen p-6 bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen bg-slate-50 p-4 dark:bg-slate-950 sm:p-6">
       <div className="max-w-3xl mx-auto">
         <Button
           onClick={() => router.push('/requests')}
@@ -228,18 +228,18 @@ export default function RequestDetailPage() {
           Back to Requests
         </Button>
 
-        <Card className="p-8">
+        <Card className="p-4 sm:p-8">
           {/* Header */}
-          <div className="flex items-start justify-between gap-4 mb-6">
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-50 mb-2">
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 flex-1">
+              <h1 className="break-words text-2xl font-bold text-slate-900 dark:text-slate-50 mb-2 sm:text-3xl">
                 {request.title}
               </h1>
               <p className="text-slate-600 dark:text-slate-400">
                 {request.description}
               </p>
             </div>
-            <div className="flex gap-2 flex-wrap justify-end">
+            <div className="flex flex-wrap gap-2 sm:justify-end">
               <Badge className={statusColors[request.status]}>
                 {statusLabels[request.status] ?? request.status.charAt(0).toUpperCase() + request.status.slice(1)}
               </Badge>

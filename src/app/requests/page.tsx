@@ -10,7 +10,7 @@ export default function RequestsPage() {
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Request History</h1>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Request History</h1>
         <p className="text-slate-600 dark:text-slate-400">
           {isSuperAdmin
             ? "Review requests submitted from every organization and track them through to completion."

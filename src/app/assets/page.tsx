@@ -145,7 +145,7 @@ export default function AssetsPage() {
         <>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Asset Registry</h1>
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Asset Registry</h1>
               <p className="text-muted-foreground">Track each government asset from acquisition to disposal.</p>
             </div>
             <div className="flex flex-wrap gap-2">

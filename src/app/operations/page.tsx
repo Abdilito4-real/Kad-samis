@@ -99,7 +99,7 @@ export default function OperationsPage() {
             Back to Users
           </Button>
         )}
-        <h1 className="text-3xl font-bold tracking-tight">
+        <h1 className="break-words text-2xl font-bold tracking-tight sm:text-3xl">
           {viewingSingleOperator ? `Assigned to ${operatorEmail || "Operational Manager"}` : isSuperAdmin ? "Operations Overview" : "My Operations"}
         </h1>
         <p className="text-slate-600 dark:text-slate-400">
