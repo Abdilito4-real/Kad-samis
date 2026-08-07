@@ -73,6 +73,12 @@ export function DashboardHeader({ onOpenCommandPalette, onOpenMobileMenu }: Dash
       return [{ label: "Dashboard", href: "/dashboard" }];
     }
 
+    // Already on /dashboard — don't prepend another "Dashboard" root crumb,
+    // that produced a redundant "Dashboard / Dashboard" breadcrumb.
+    if (segments[0] === "dashboard") {
+      return crumbs;
+    }
+
     return [{ label: "Dashboard", href: "/dashboard" }, ...crumbs];
   }, [pathname]);
 
@@ -100,23 +106,27 @@ export function DashboardHeader({ onOpenCommandPalette, onOpenMobileMenu }: Dash
 
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-card/90 backdrop-blur">
-      <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <div className="flex items-start gap-3">
+      <div className="flex items-center gap-2 px-4 py-3 sm:gap-3 sm:px-6 sm:py-4">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:items-start sm:gap-3">
           {onOpenMobileMenu ? (
             <Button
               variant="outline"
               size="icon"
               aria-label="Open navigation menu"
-              className="mt-0.5 shrink-0 lg:hidden"
+              className="shrink-0 lg:hidden"
               onClick={onOpenMobileMenu}
             >
               <Menu className="h-4 w-4" />
             </Button>
           ) : null}
-        <div className="min-w-0 flex-1 space-y-2">
-          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <div className="min-w-0 flex-1 sm:space-y-2">
+          {/* overflow-x-auto (scrollbar hidden) instead of flex-wrap — keeps
+              the header a single row even when a route segment is long (a
+              detail-page id), scrolling that one row instead of wrapping the
+              whole header onto a second line. */}
+          <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap text-sm text-muted-foreground [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {breadcrumbs.map((crumb, index) => (
-              <div key={`${crumb.href}-${index}`} className="flex items-center gap-2">
+              <div key={`${crumb.href}-${index}`} className="flex shrink-0 items-center gap-2">
                 {index > 0 ? <span className="text-muted-foreground/50">/</span> : null}
                 <span className={index === breadcrumbs.length - 1 ? "font-semibold text-primary" : ""}>
                   {crumb.label}
@@ -124,7 +134,7 @@ export function DashboardHeader({ onOpenCommandPalette, onOpenMobileMenu }: Dash
               </div>
             ))}
           </div>
-          {/* Status pills — hidden below sm, where three wrapping pills next to
+          {/* Status pills — hidden below sm, where three pills next to
               breadcrumbs just ate the row; still useful once there's room. */}
           <div className="hidden flex-wrap items-center gap-3 text-xs text-muted-foreground sm:flex">
             <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background/70 px-2.5 py-1">
@@ -142,7 +152,7 @@ export function DashboardHeader({ onOpenCommandPalette, onOpenMobileMenu }: Dash
         </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           {/* Icon-only on mobile — the old "Quick search" trigger was hidden
               below `sm` with nothing replacing it, so the command palette
               was unreachable from the header on phones. */}
