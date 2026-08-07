@@ -56,8 +56,8 @@ export function DownloadAppButton({ className, variant = "solid" }: DownloadAppB
             <DialogTitle>Install Kadsamis</DialogTitle>
             <DialogDescription>
               {isIOS
-                ? "Your browser doesn't support one-tap install — add it from the share menu instead:"
-                : "Your browser doesn't support one-tap install right now — you can still add it manually:"}
+                ? "Your browser doesn’t support one-tap install — add it from the share menu instead:"
+                : "Your browser doesn’t support one-tap install right now — you can still add it manually:"}
             </DialogDescription>
           </DialogHeader>
 
@@ -66,13 +66,13 @@ export function DownloadAppButton({ className, variant = "solid" }: DownloadAppB
               <li className="flex items-start gap-3">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">1</span>
                 <span className="flex items-center gap-1.5">
-                  Tap the Share icon <Share className="h-4 w-4 shrink-0" /> in Safari's toolbar.
+                  Tap the Share icon <Share className="h-4 w-4 shrink-0" /> in Safari’s toolbar.
                 </span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">2</span>
                 <span className="flex items-center gap-1.5">
-                  Scroll down and tap <PlusSquare className="h-4 w-4 shrink-0" /> "Add to Home Screen".
+                  Scroll down and tap <PlusSquare className="h-4 w-4 shrink-0" /> “Add to Home Screen”.
                 </span>
               </li>
               <li className="flex items-start gap-3">
@@ -84,15 +84,15 @@ export function DownloadAppButton({ className, variant = "solid" }: DownloadAppB
             <ol className="space-y-3 text-sm text-muted-foreground">
               <li className="flex items-start gap-3">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">1</span>
-                <span>Open your browser's menu (usually ⋮ or ⋯ in the toolbar).</span>
+                <span>Open your browser’s menu (usually ⋮ or ⋯ in the toolbar).</span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">2</span>
-                <span>Look for "Install Kadsamis…", "Add to Home screen", or "Apps → Install this site as an app".</span>
+                <span>Look for “Install Kadsamis…”, “Add to Home screen”, or “Apps → Install this site as an app”.</span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">3</span>
-                <span>Confirm — Kadsamis then opens in its own window, without the browser's address bar.</span>
+                <span>Confirm — Kadsamis then opens in its own window, without the browser’s address bar.</span>
               </li>
             </ol>
           )}

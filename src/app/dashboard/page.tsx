@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
@@ -513,9 +514,11 @@ export default function DashboardPage() {
                       >
                         <div className="flex min-w-0 items-center justify-between gap-3 sm:justify-start">
                           <div className="flex min-w-0 items-center gap-3">
-                            <img
-                              src="/images/auth/kaduna-state.svg"
+                            <Image
+                              src="/images/auth/kaduna-state.png"
                               alt=""
+                              width={32}
+                              height={32}
                               className="h-8 w-8 shrink-0 rounded-full border border-border bg-card object-cover"
                             />
                             <div className="min-w-0">

@@ -1,8 +1,23 @@
 import type React from "react";
+import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/components/auth-provider";
 import { AppToaster } from "@/components/app-toaster";
 import "./globals.css";
+
+// Self-hosted at build time instead of the old `@import url(fonts.googleapis.com/...)`
+// in globals.css — that pattern costs two extra render-blocking round trips
+// (fonts.googleapis.com for the CSS, then fonts.gstatic.com for the actual
+// font files) before any text can paint. next/font fetches once at build
+// time, serves the files from this origin, and inlines the @font-face CSS
+// with size-adjusted metrics — no extra connections, no layout shift from a
+// fallback-to-webfont swap.
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+  variable: "--font-inter",
+});
 
 export default function RootLayout({
   children,
@@ -10,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
+    <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth" className={inter.variable}>
       <head>
         <title>Kadsamis</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
@@ -139,9 +140,11 @@ export default function LoginPageContent() {
             <div className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg">
-                  <img
-                    src="/images/auth/kaduna-state.svg"
+                  <Image
+                    src="/images/auth/kaduna-state.png"
                     alt="Kaduna State government facilities management illustration"
+                    width={600}
+                    height={96}
                     className="h-24 w-full rounded-2xl object-cover"
                   />
                   <div className="p-3 text-sm text-slate-200">
@@ -151,9 +154,11 @@ export default function LoginPageContent() {
                 </div>
 
                 <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg">
-                  <img
-                    src="/images/auth/kadfama.svg"
+                  <Image
+                    src="/images/auth/kadfama.png"
                     alt="KADFAMA facilities management agency illustration"
+                    width={600}
+                    height={96}
                     className="h-24 w-full rounded-2xl object-cover"
                   />
                   <div className="p-3 text-sm text-slate-200">
@@ -176,7 +181,7 @@ export default function LoginPageContent() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 overflow-hidden rounded-2xl border border-border bg-background shadow-sm sm:h-12 sm:w-12">
-                  <img src="/images/auth/kaduna-state.svg" alt="Kaduna State logo" className="h-full w-full rounded-2xl object-cover" />
+                  <Image src="/images/auth/kaduna-state.png" alt="Kaduna State logo" width={48} height={48} priority className="h-full w-full rounded-2xl object-cover" />
                 </div>
                 <div className="min-w-0">
                   <h2 className="truncate text-lg font-semibold text-foreground sm:text-xl">Kadsamis</h2>

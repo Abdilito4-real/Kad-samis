@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -249,9 +250,12 @@ export function DashboardSidebar({ mobileOpen = false, onMobileClose }: Dashboar
         )}
       >
       <div className="flex items-center gap-3 border-b border-border pb-4">
-        <img
-          src="/images/auth/kaduna-state.svg"
+        <Image
+          src="/images/auth/kaduna-state.png"
           alt="Kaduna State logo"
+          width={40}
+          height={40}
+          priority
           className="h-10 w-10 rounded-xl object-cover"
         />
         <div className="min-w-0 flex-1">

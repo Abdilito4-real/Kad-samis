@@ -1,14 +1,16 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useTheme } from "next-themes";
 import {
   ArrowRight,
   BadgeCheck,
   BarChart3,
   Building2,
+  ChevronRight,
   ClipboardCheck,
   Compass,
   FileText,
@@ -24,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import { DownloadAppButton } from "@/components/download-app-button";
+import { cn } from "@/lib/utils";
 
 const navLinks = [
   { href: "#about", label: "About" },
@@ -130,14 +133,44 @@ export default function Home() {
     setMounted(true);
   }, []);
 
+  // Prevent the page from scrolling behind the open mobile menu — without
+  // this, a tall nav list on a short viewport lets the backdrop's content
+  // scroll independently underneath, which reads as broken.
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileNavOpen]);
+
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(15,118,110,0.14),_transparent_30%),linear-gradient(135deg,_#f8fafc,_#eef5f8)] text-foreground transition-colors dark:bg-background dark:bg-none">
       <div className="mx-auto flex max-w-7xl flex-col px-4 pb-16 pt-5 sm:px-6 lg:px-8">
-        <header className="sticky top-4 z-20 rounded-full border border-border bg-card/80 px-4 py-3 shadow-[0_12px_35px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+        <header
+          className={cn(
+            "sticky top-4 z-20 border border-border bg-card/80 px-4 py-3 shadow-[0_12px_35px_rgba(15,23,42,0.08)] backdrop-blur-xl transition-[border-radius] duration-200",
+            // A fixed `rounded-full` (9999px) on a pill-shaped bar reads
+            // fine, but the same radius on the much taller box the open
+            // mobile menu produces exaggerates into a huge circular arc in
+            // each corner instead of a clean rounded rectangle — that's the
+            // odd cutout shape swallowing the top of the menu. Swap to a
+            // sane fixed radius only while it's actually expanded.
+            mobileNavOpen ? "rounded-[2rem]" : "rounded-full"
+          )}
+        >
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 overflow-hidden rounded-full border border-border bg-background shadow-sm">
-                <img src="/images/auth/kaduna-state.svg" alt="Kaduna State logo" className="h-full w-full rounded-full object-cover" />
+                <Image
+                  src="/images/auth/kaduna-state.png"
+                  alt="Kaduna State logo"
+                  width={40}
+                  height={40}
+                  priority
+                  className="h-full w-full rounded-full object-cover"
+                />
               </div>
               <div>
                 <p className="text-sm font-semibold tracking-[0.2em] text-foreground">Kadsamis</p>
@@ -181,21 +214,57 @@ export default function Home() {
             </div>
           </div>
 
-          {mobileNavOpen ? (
-            <div className="mt-3 space-y-1 border-t border-border pt-3 md:hidden">
-              {navLinks.map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileNavOpen(false)}
-                  className="block rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
-                >
-                  {link.label}
-                </a>
-              ))}
-            </div>
-          ) : null}
+          <AnimatePresence>
+            {mobileNavOpen ? (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="overflow-hidden md:hidden"
+              >
+                <div className="mt-3 space-y-1 border-t border-border pt-3">
+                  {navLinks.map((link) => (
+                    <a
+                      key={link.href}
+                      href={link.href}
+                      onClick={() => setMobileNavOpen(false)}
+                      className="group flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+                    >
+                      {link.label}
+                      <ChevronRight className="h-4 w-4 text-muted-foreground/50 transition group-hover:translate-x-0.5 group-hover:text-primary" />
+                    </a>
+                  ))}
+                  {/* The header's own Download App button is hidden below
+                      `sm`, so this is the only place a phone-width visitor
+                      can reach it. Login and the theme toggle stay visible
+                      in the collapsed bar at every width, so they don't
+                      need repeating here. */}
+                  <div className="flex flex-col gap-1 border-t border-border pt-2 sm:hidden">
+                    <DownloadAppButton className="w-full justify-center" />
+                  </div>
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
         </header>
+
+        {/* Backdrop: dims the page and closes the menu on an outside tap.
+            Sits below the header (which stays interactive on top of it) but
+            above everything else. */}
+        <AnimatePresence>
+          {mobileNavOpen ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setMobileNavOpen(false)}
+              className="fixed inset-0 z-10 bg-slate-950/40 backdrop-blur-sm md:hidden"
+              aria-hidden
+            />
+          ) : null}
+        </AnimatePresence>
 
         <section id="about" className="grid items-center gap-10 px-2 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:px-4 lg:py-24">
           <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="min-w-0">
@@ -311,7 +380,7 @@ export default function Home() {
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 overflow-hidden rounded-full border border-border bg-background shadow-sm">
-                <img src="/images/auth/kaduna-state.svg" alt="Kaduna State logo" className="h-full w-full rounded-full object-cover" />
+                <Image src="/images/auth/kaduna-state.png" alt="Kaduna State logo" width={48} height={48} className="h-full w-full rounded-full object-cover" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-foreground">Official Digital Platform</p>
@@ -477,7 +546,7 @@ export default function Home() {
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 text-sm text-muted-foreground sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 overflow-hidden rounded-full border border-border bg-background shadow-sm">
-              <img src="/images/auth/kaduna-state.svg" alt="Kaduna State logo" className="h-full w-full rounded-full object-cover" />
+              <Image src="/images/auth/kaduna-state.png" alt="Kaduna State logo" width={40} height={40} className="h-full w-full rounded-full object-cover" />
             </div>
             <div>
               <p className="font-semibold text-foreground">Kaduna State Government</p>
