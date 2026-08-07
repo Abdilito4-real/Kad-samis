@@ -187,7 +187,13 @@ export async function POST(req: Request) {
         })
       : null;
 
-    const db = serviceRoleClient ?? supabase;
+    // ctx.authClient is whichever client actually authenticated as this
+    // user (the bearer-token client, when the frontend sends one — which
+    // it does). Falling back to the plain cookie-based `supabase` here
+    // instead would run every query below as an unauthenticated `anon`
+    // connection whenever there's no session cookie, and RLS would reject
+    // the insert outright since auth.uid() comes back NULL.
+    const db = serviceRoleClient ?? ctx.authClient ?? supabase;
 
     // Validate category ids up front so a bad/renamed category doesn't
     // surface as an opaque insert error per-row.
