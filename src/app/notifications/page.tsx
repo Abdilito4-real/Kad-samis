@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/auth-provider";
 import { PushNotificationsCard } from "@/components/notifications/PushNotificationsCard";
+import { ResponsiveList } from "@/components/layout/ResponsiveList";
 import { cn } from "@/lib/utils";
 
 interface Notification {
@@ -115,14 +116,14 @@ export default function NotificationsPage() {
             <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading notifications...</div>
           ) : items.length === 0 ? (
             <p className="py-8 text-sm text-muted-foreground">No notifications yet.</p>
-          ) : <div className="space-y-3">
+          ) : <ResponsiveList>
             {items.map((item) => (
               <button
                 type="button"
                 key={item.id}
                 onClick={() => markAsRead(item.id)}
                 className={cn(
-                  "flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition hover:bg-muted/50",
+                  "flex min-h-12 w-full items-start gap-3 rounded-2xl border p-4 text-left transition hover:bg-muted/50",
                   item.read ? "border-border bg-background/70" : "border-emerald-500/30 bg-emerald-500/5"
                 )}
               >
@@ -142,7 +143,7 @@ export default function NotificationsPage() {
                 </div>
               </button>
             ))}
-          </div>}
+          </ResponsiveList>}
         </CardContent>
       </Card>
     </div>

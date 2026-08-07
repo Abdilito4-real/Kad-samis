@@ -7,6 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ResponsiveGrid } from "@/components/layout/ResponsiveGrid";
+import { MetricCard } from "@/components/layout/MetricCard";
 import { Sun, Moon, User as UserIcon, KeyRound, LayoutDashboard, Loader2, Save, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { createClient } from "@/lib/supabase/client";
@@ -131,35 +134,19 @@ export default function SettingsPage() {
         <p className="text-muted-foreground">Manage your profile, appearance, and account security.</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Role</CardTitle>
-            <ShieldCheck className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold">{formatRole(user?.roleId)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Theme</CardTitle>
-            {mounted && theme === "dark" ? <Moon className="h-4 w-4 text-primary" /> : <Sun className="h-4 w-4 text-primary" />}
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold">{mounted ? (theme === "dark" ? "Dark" : "Light") : "—"}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Signed in as</CardTitle>
-            <UserIcon className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="truncate text-2xl font-semibold">{user ? displayIdentity({ email: user.email, username: user.username, role: user.roleId }) : "—"}</div>
-          </CardContent>
-        </Card>
-      </div>
+      <ResponsiveGrid cols={{ base: 1, md: 3, xl: 3 }}>
+        <MetricCard title="Role" value={formatRole(user?.roleId)} icon={ShieldCheck} />
+        <MetricCard
+          title="Theme"
+          value={mounted ? (theme === "dark" ? "Dark" : "Light") : "—"}
+          icon={mounted && theme === "dark" ? Moon : Sun}
+        />
+        <MetricCard
+          title="Signed in as"
+          value={user ? displayIdentity({ email: user.email, username: user.username, role: user.roleId }) : "—"}
+          icon={UserIcon}
+        />
+      </ResponsiveGrid>
 
       {/* Profile */}
       <Card>
@@ -241,21 +228,22 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <PushNotificationsCard />
-          <label className="flex items-center justify-between rounded-2xl border border-border bg-background/70 p-4">
+          <div className="flex flex-col gap-3 rounded-2xl border border-border bg-background/70 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="font-medium">Landing page after sign-in</p>
               <p className="text-sm text-muted-foreground">Where KAD-SAMIS takes you right after you log in.</p>
             </div>
-            <select
-              className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-              value={defaultView}
-              onChange={(event) => handleDefaultViewChange(event.target.value)}
-            >
-              <option value="dashboard">Dashboard</option>
-              <option value="assets">Assets</option>
-              <option value="requests">Requests</option>
-            </select>
-          </label>
+            <Select value={defaultView} onValueChange={handleDefaultViewChange}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="dashboard">Dashboard</SelectItem>
+                <SelectItem value="assets">Assets</SelectItem>
+                <SelectItem value="requests">Requests</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardContent>
       </Card>
 

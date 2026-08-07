@@ -7,6 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ResponsiveGrid } from "@/components/layout/ResponsiveGrid";
+import { MetricCard } from "@/components/layout/MetricCard";
+import { ResponsiveList } from "@/components/layout/ResponsiveList";
 import { AlertCircle, Loader2, Users2, ShieldCheck, UserPlus, Wrench, Plus, X, ChevronRight, Pencil, Check } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { createClient } from "@/lib/supabase/client";
@@ -269,26 +272,15 @@ export default function UsersPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <ResponsiveGrid cols={{ base: 1, md: 3, xl: 3 }}>
         {[
           { title: "Profiles", value: users.length, icon: Users2 },
           { title: "Assigned roles", value: protectedRoles, icon: ShieldCheck },
           { title: "Organizations represented", value: new Set(users.map((user) => user.organization_id).filter(Boolean)).size, icon: UserPlus },
-        ].map((item) => {
-          const Icon = item.icon;
-          return (
-            <Card key={item.title}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">{item.title}</CardTitle>
-                <Icon className="h-4 w-4 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-semibold">{loading ? "-" : item.value}</div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+        ].map((item) => (
+          <MetricCard key={item.title} title={item.title} value={loading ? "-" : item.value} icon={item.icon} />
+        ))}
+      </ResponsiveGrid>
 
       {isSuperAdmin && (
         <Card>
@@ -360,11 +352,11 @@ export default function UsersPage() {
               {operationalManagers.length === 0 ? (
                 <p className="py-4 text-sm text-muted-foreground">No Operational Managers yet.</p>
               ) : (
-                <div className="space-y-3">
+                <ResponsiveList>
                   {operationalManagers.map((u) => (
                     <UserRow key={u.id} user={u} onUsernameSaved={handleUsernameSaved} />
                   ))}
-                </div>
+                </ResponsiveList>
               )}
             </CardContent>
           )}
@@ -384,11 +376,11 @@ export default function UsersPage() {
           ) : administrators.length === 0 ? (
             <p className="py-8 text-sm text-muted-foreground">No administrators were found.</p>
           ) : (
-            <div className="space-y-3">
+            <ResponsiveList>
               {administrators.map((u) => (
                 <UserRow key={u.id} user={u} onUsernameSaved={handleUsernameSaved} />
               ))}
-            </div>
+            </ResponsiveList>
           )}
         </CardContent>
       </Card>
@@ -404,11 +396,11 @@ export default function UsersPage() {
           ) : error ? null : otherStaff.length === 0 ? (
             <p className="py-8 text-sm text-muted-foreground">No other staff profiles were found.</p>
           ) : (
-            <div className="space-y-3">
+            <ResponsiveList>
               {otherStaff.map((u) => (
                 <UserRow key={u.id} user={u} onUsernameSaved={handleUsernameSaved} />
               ))}
-            </div>
+            </ResponsiveList>
           )}
         </CardContent>
       </Card>
