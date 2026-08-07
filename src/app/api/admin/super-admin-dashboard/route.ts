@@ -42,20 +42,21 @@ export async function GET(req: Request) {
     // Fetch all assets with categories for portfolio value calculation
     const { data: allAssets, error: assetError } = await supabase
       .from('assets')
-      .select('id, asset_number, name, purchase_price, purchase_date, organization_id, category_id, asset_categories(depreciation_rate)');
+      .select('id, asset_number, name, purchase_value, purchase_year, organization_id, category_id, asset_categories(depreciation_rate)');
 
     if (assetError) {
       console.warn('Failed to load assets:', assetError);
     }
 
-    // Calculate portfolio values
+    // Calculate portfolio values. Only a purchase year is captured now (not
+    // a full date) — treat it as Jan 1 of that year for the depreciation clock.
     const assetList = (allAssets ?? []).map((asset: any) => ({
       id: asset.id,
       name: asset.name,
       organizationId: asset.organization_id,
-      purchasePrice: asset.purchase_price ?? 0,
+      purchasePrice: asset.purchase_value ?? 0,
       depreciationRate: (asset.asset_categories?.[0]?.depreciation_rate ?? 10) as number,
-      purchaseDate: asset.purchase_date ?? new Date().toISOString(),
+      purchaseDate: asset.purchase_year ? new Date(asset.purchase_year, 0, 1) : new Date(),
     }));
 
     const portfolioMetrics = calculatePortfolioValue(assetList);

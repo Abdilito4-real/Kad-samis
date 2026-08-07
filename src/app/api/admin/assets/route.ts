@@ -2,6 +2,26 @@ import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { createServerSideClient } from '@/lib/supabase/server';
 import { writeAudit } from '@/lib/supabase/serverHelpers';
+import { ASSET_CONDITIONS, ASSET_STATUSES } from '@/lib/assetImport';
+
+interface BulkAssetRow {
+  rowNumber: number;
+  assetNumber: string;
+  name: string;
+  make: string | null;
+  purchaseYear: number | null;
+  purchaseValue: number | null;
+  condition: string;
+  warrantyYears: number | null;
+  status: string;
+  categoryId: string;
+}
+
+interface SkippedRow {
+  rowNumber: number;
+  assetNumber: string;
+  reasons: string[];
+}
 
 async function getProfile(supabase: any, req?: Request) {
   const authHeader = req?.headers.get('authorization');
@@ -100,7 +120,9 @@ export async function GET(req: Request) {
 
     let query = queryClient
       .from('assets')
-      .select('id, asset_number, name, status, condition, created_at, organization_id')
+      .select(
+        'id, asset_number, name, status, condition, make, purchase_year, purchase_value, warranty_years, created_at, organization_id, asset_categories(name)'
+      )
       .order('created_at', { ascending: false });
 
     // Only super_admin can see all assets; org admins see only their organization's assets
@@ -121,9 +143,16 @@ export async function GET(req: Request) {
   }
 }
 
+// Assets are created exclusively via CSV import now — this always inserts
+// a batch (a single-row import is just a batch of one). Each row is
+// re-validated server-side (required fields, enum values, category
+// existence, duplicate asset numbers — both within the file and against
+// what's already in the table) rather than trusting the client's own
+// validation, since this endpoint can be called directly.
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    const rows: BulkAssetRow[] = Array.isArray(body?.rows) ? body.rows : [];
     const supabase = await createServerSideClient();
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
@@ -133,11 +162,6 @@ export async function POST(req: Request) {
 
     const ctx = await getProfile(supabase, req);
     if (!ctx?.profile) {
-      console.error('POST /api/admin/assets unauthorized', {
-        authHeader: req.headers.get('authorization'),
-        userId: ctx?.user?.id,
-        profile: ctx?.profile,
-      });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -145,12 +169,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Super admins have read-only access to assets' }, { status: 403 });
     }
 
-    console.log('POST /api/admin/assets ctx', {
-      userId: ctx.user?.id,
-      profile: ctx.profile,
-      usingServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-      organizationId: ctx.profile.organization_id,
-    });
+    if (!ctx.profile.organization_id) {
+      return NextResponse.json({ error: 'Your account has no organization assigned' }, { status: 403 });
+    }
+
+    if (rows.length === 0) {
+      return NextResponse.json({ error: 'No rows to import' }, { status: 400 });
+    }
 
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const serviceRoleClient = serviceRoleKey && process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -162,53 +187,104 @@ export async function POST(req: Request) {
         })
       : null;
 
-    const payload = {
-      asset_number: body.assetNumber,
-      name: body.name,
-      category_id: body.categoryId,
-      condition: body.condition,
-      status: body.status,
-      manufacturer: body.manufacturer || null,
-      model: body.model || null,
-      serial_number: body.serialNumber || null,
-      purchase_date: body.purchaseDate || null,
-      purchase_price: body.purchasePrice ? Number(body.purchasePrice) : null,
-      current_value: body.currentValue ? Number(body.currentValue) : null,
-      warranty_expiry: body.warrantyExpiry || null,
-      funding_source: body.fundingSource || null,
-      notes: body.notes || null,
-      organization_id: ctx.profile.role === 'super_admin' ? body.organizationId || ctx.profile.organization_id : ctx.profile.organization_id,
-      created_by: ctx.user.id,
-    };
+    const db = serviceRoleClient ?? supabase;
 
-    const { data, error } = await (serviceRoleClient ?? supabase)
+    // Validate category ids up front so a bad/renamed category doesn't
+    // surface as an opaque insert error per-row.
+    const categoryIds = Array.from(new Set(rows.map((r) => r.categoryId).filter(Boolean)));
+    const { data: validCategories, error: categoryError } = await db
+      .from('asset_categories')
+      .select('id')
+      .in('id', categoryIds.length ? categoryIds : ['00000000-0000-0000-0000-000000000000']);
+
+    if (categoryError) {
+      return NextResponse.json({ error: categoryError.message }, { status: 500 });
+    }
+    const validCategoryIdSet = new Set((validCategories ?? []).map((c: any) => c.id));
+
+    // Existing asset numbers this batch collides with (asset_number is
+    // globally unique, not just within the organization).
+    const candidateNumbers = Array.from(new Set(rows.map((r) => r.assetNumber).filter(Boolean)));
+    const { data: existingAssets, error: existingError } = await db
       .from('assets')
-      .insert([payload])
-      .select('*');
+      .select('asset_number')
+      .in('asset_number', candidateNumbers.length ? candidateNumbers : ['__none__']);
 
-    if (error) {
-      console.error('Asset create failed', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (existingError) {
+      return NextResponse.json({ error: existingError.message }, { status: 500 });
     }
+    const existingNumberSet = new Set((existingAssets ?? []).map((a: any) => a.asset_number));
 
-    const createdAsset = data?.[0] ?? { ...payload };
+    const seenInBatch = new Set<string>();
+    const skipped: SkippedRow[] = [];
+    const toInsert: Array<Record<string, unknown>> = [];
 
-    // Write central audit log for asset creation
-    try {
-      await writeAudit(serviceRoleClient ?? supabase, req, {
-        action: 'insert',
-        table_name: 'assets',
-        record_id: createdAsset.id ?? null,
-        old_values: {},
-        new_values: createdAsset,
-        user_id: ctx.user?.id ?? null,
+    for (const row of rows) {
+      const reasons: string[] = [];
+
+      if (!row.name?.trim()) reasons.push('Assets Name is required');
+      if (!row.assetNumber?.trim()) reasons.push('Assets ID or Number is required');
+      if (!row.condition || !ASSET_CONDITIONS.includes(row.condition as any)) reasons.push('Condition is missing or invalid');
+      if (row.status && !ASSET_STATUSES.includes(row.status as any)) reasons.push('Status is invalid');
+      if (!row.categoryId || !validCategoryIdSet.has(row.categoryId)) reasons.push('Category is missing or unrecognized');
+
+      if (row.assetNumber) {
+        if (existingNumberSet.has(row.assetNumber)) {
+          reasons.push(`Asset number "${row.assetNumber}" already exists`);
+        } else if (seenInBatch.has(row.assetNumber)) {
+          reasons.push(`Duplicate asset number "${row.assetNumber}" elsewhere in this file`);
+        }
+      }
+
+      if (reasons.length > 0) {
+        skipped.push({ rowNumber: row.rowNumber, assetNumber: row.assetNumber, reasons });
+        continue;
+      }
+
+      seenInBatch.add(row.assetNumber);
+      toInsert.push({
+        asset_number: row.assetNumber,
+        name: row.name,
+        category_id: row.categoryId,
+        condition: row.condition,
+        status: row.status || 'active',
+        make: row.make || null,
+        purchase_year: row.purchaseYear ?? null,
+        purchase_value: row.purchaseValue ?? null,
+        warranty_years: row.warrantyYears ?? null,
+        organization_id: ctx.profile.organization_id,
+        created_by: ctx.user.id,
       });
-    } catch (err) {
-      console.warn('Failed to write asset creation audit:', err);
     }
-    return NextResponse.json({ asset: createdAsset });
+
+    let created: any[] = [];
+    if (toInsert.length > 0) {
+      const { data, error } = await db.from('assets').insert(toInsert).select('*');
+      if (error) {
+        console.error('Asset bulk insert failed', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+      created = data ?? [];
+    }
+
+    if (created.length > 0) {
+      try {
+        await writeAudit(db, req, {
+          action: 'insert',
+          table_name: 'assets',
+          record_id: null,
+          old_values: {},
+          new_values: { imported: created.length, asset_numbers: created.map((a) => a.asset_number) },
+          user_id: ctx.user?.id ?? null,
+        });
+      } catch (err) {
+        console.warn('Failed to write asset import audit:', err);
+      }
+    }
+
+    return NextResponse.json({ created, skipped });
   } catch (error) {
-    console.error('Asset creation failed', error);
-    return NextResponse.json({ error: 'Unable to create asset' }, { status: 500 });
+    console.error('Asset import failed', error);
+    return NextResponse.json({ error: 'Unable to import assets' }, { status: 500 });
   }
 }

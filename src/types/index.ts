@@ -34,30 +34,15 @@ export interface User {
 export interface Asset {
   id: string;
   assetNumber: string;
-  qrCode: string | null;
-  barcode: string | null;
   name: string;
   categoryId: string;
-  subcategoryId: string | null;
-  manufacturer: string | null;
-  model: string | null;
-  serialNumber: string | null;
-  purchaseDate: string | null;
-  purchasePrice: number | null;
-  currentValue: number | null;
-  depreciationRate: number | null;
-  warrantyExpiry: string | null;
+  make: string | null;
+  purchaseYear: number | null;
+  purchaseValue: number | null;
+  warrantyYears: number | null;
   condition: "excellent" | "good" | "fair" | "poor" | "damaged";
   status: "active" | "inactive" | "disposal" | "maintenance" | "archived";
-  fundingSource: string | null;
-  supplierId: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  buildingId: string | null;
-  floorId: string | null;
-  roomId: string | null;
-  assignedOfficerId: string | null;
-  notes: string | null;
+  organizationId: string | null;
   createdAt: string;
   updatedAt: string;
 }

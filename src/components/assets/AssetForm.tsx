@@ -5,8 +5,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ASSET_CONDITIONS, ASSET_STATUSES } from "@/lib/assetImport";
 
 export interface AssetCategory {
   id: string;
@@ -20,15 +20,10 @@ export interface AssetFormValues {
   categoryId: string;
   condition: string;
   status: string;
-  manufacturer: string;
-  model: string;
-  serialNumber: string;
-  purchaseDate: string;
-  purchasePrice: string;
-  currentValue: string;
-  warrantyExpiry: string;
-  fundingSource: string;
-  notes: string;
+  make: string;
+  purchaseYear: string;
+  purchaseValue: string;
+  warrantyYears: string;
 }
 
 const defaultValues: AssetFormValues = {
@@ -37,19 +32,11 @@ const defaultValues: AssetFormValues = {
   categoryId: "",
   condition: "good",
   status: "active",
-  manufacturer: "",
-  model: "",
-  serialNumber: "",
-  purchaseDate: "",
-  purchasePrice: "",
-  currentValue: "",
-  warrantyExpiry: "",
-  fundingSource: "",
-  notes: "",
+  make: "",
+  purchaseYear: "",
+  purchaseValue: "",
+  warrantyYears: "",
 };
-
-const conditions = ["excellent", "good", "fair", "poor", "damaged"];
-const statuses = ["active", "inactive", "maintenance", "disposal", "archived"];
 
 interface Props {
   initialValues?: Partial<AssetFormValues>;
@@ -57,6 +44,9 @@ interface Props {
   submitLabel: string;
 }
 
+// This form is now edit-only — new assets come in through the CSV
+// template/import flow on /assets/create. It still covers every field the
+// import writes so an asset created via CSV can be corrected here later.
 export function AssetForm({ initialValues, onSubmit, submitLabel }: Props) {
   const [values, setValues] = useState<AssetFormValues>({ ...defaultValues, ...(initialValues ?? {}) });
   const [categories, setCategories] = useState<AssetCategory[]>([]);
@@ -122,7 +112,7 @@ export function AssetForm({ initialValues, onSubmit, submitLabel }: Props) {
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="assetNumber">Asset number</Label>
+          <Label htmlFor="assetNumber">Assets ID or number</Label>
           <Input
             id="assetNumber"
             value={values.assetNumber}
@@ -132,7 +122,7 @@ export function AssetForm({ initialValues, onSubmit, submitLabel }: Props) {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="name">Asset name</Label>
+          <Label htmlFor="name">Assets name</Label>
           <Input
             id="name"
             value={values.name}
@@ -181,7 +171,7 @@ export function AssetForm({ initialValues, onSubmit, submitLabel }: Props) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {conditions.map((condition) => (
+              {ASSET_CONDITIONS.map((condition) => (
                 <SelectItem key={condition} value={condition}>
                   {condition.charAt(0).toUpperCase() + condition.slice(1)}
                 </SelectItem>
@@ -196,7 +186,7 @@ export function AssetForm({ initialValues, onSubmit, submitLabel }: Props) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {statuses.map((status) => (
+              {ASSET_STATUSES.map((status) => (
                 <SelectItem key={status} value={status}>
                   {status.charAt(0).toUpperCase() + status.slice(1)}
                 </SelectItem>
@@ -206,102 +196,56 @@ export function AssetForm({ initialValues, onSubmit, submitLabel }: Props) {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="manufacturer">Manufacturer</Label>
+          <Label htmlFor="make">Make</Label>
           <Input
-            id="manufacturer"
-            value={values.manufacturer}
-            onChange={(event) => handleChange("manufacturer", event.target.value)}
-            placeholder="Caterpillar"
+            id="make"
+            value={values.make}
+            onChange={(event) => handleChange("make", event.target.value)}
+            placeholder="Toyota"
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="model">Model</Label>
+          <Label htmlFor="purchaseYear">Year</Label>
           <Input
-            id="model"
-            value={values.model}
-            onChange={(event) => handleChange("model", event.target.value)}
-            placeholder="X5000"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="serialNumber">Serial number</Label>
-          <Input
-            id="serialNumber"
-            value={values.serialNumber}
-            onChange={(event) => handleChange("serialNumber", event.target.value)}
-            placeholder="SN-00012345"
-          />
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="space-y-2">
-          <Label htmlFor="purchaseDate">Purchase date</Label>
-          <Input
-            id="purchaseDate"
-            type="date"
-            value={values.purchaseDate}
-            onChange={(event) => handleChange("purchaseDate", event.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="purchasePrice">Purchase price</Label>
-          <Input
-            id="purchasePrice"
+            id="purchaseYear"
             type="number"
-            min="0"
-            step="0.01"
-            value={values.purchasePrice}
-            onChange={(event) => handleChange("purchasePrice", event.target.value)}
-            placeholder="0.00"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="currentValue">Current value</Label>
-          <Input
-            id="currentValue"
-            type="number"
-            min="0"
-            step="0.01"
-            value={values.currentValue}
-            onChange={(event) => handleChange("currentValue", event.target.value)}
-            placeholder="0.00"
+            min="1900"
+            max="2100"
+            step="1"
+            value={values.purchaseYear}
+            onChange={(event) => handleChange("purchaseYear", event.target.value)}
+            placeholder="2026"
           />
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="warrantyExpiry">Warranty expiry</Label>
+          <Label htmlFor="purchaseValue">Purchase value</Label>
           <Input
-            id="warrantyExpiry"
-            type="date"
-            value={values.warrantyExpiry}
-            onChange={(event) => handleChange("warrantyExpiry", event.target.value)}
+            id="purchaseValue"
+            type="number"
+            min="0"
+            step="0.01"
+            value={values.purchaseValue}
+            onChange={(event) => handleChange("purchaseValue", event.target.value)}
+            placeholder="0.00"
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="fundingSource">Funding source</Label>
+          <Label htmlFor="warrantyYears">Warranty (years)</Label>
           <Input
-            id="fundingSource"
-            value={values.fundingSource}
-            onChange={(event) => handleChange("fundingSource", event.target.value)}
-            placeholder="Government budget"
+            id="warrantyYears"
+            type="number"
+            min="0"
+            step="1"
+            value={values.warrantyYears}
+            onChange={(event) => handleChange("warrantyYears", event.target.value)}
+            placeholder="2"
           />
         </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="notes">Notes</Label>
-        <Textarea
-          id="notes"
-          value={values.notes}
-          onChange={(event) => handleChange("notes", event.target.value)}
-          placeholder="Additional asset details"
-          rows={4}
-        />
       </div>
 
       <div className="flex justify-end">

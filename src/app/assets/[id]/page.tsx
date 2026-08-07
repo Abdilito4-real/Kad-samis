@@ -14,15 +14,10 @@ interface Asset {
   category_id: string;
   condition: string;
   status: string;
-  manufacturer: string | null;
-  model: string | null;
-  serial_number: string | null;
-  purchase_date: string | null;
-  purchase_price: number | null;
-  current_value: number | null;
-  warranty_expiry: string | null;
-  funding_source: string | null;
-  notes: string | null;
+  make: string | null;
+  purchase_year: number | null;
+  purchase_value: number | null;
+  warranty_years: number | null;
 }
 
 export default function AssetDetailPage({ params }: { params: Promise<{ id: string }> }) {

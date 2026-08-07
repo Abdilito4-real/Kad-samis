@@ -49,11 +49,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const assetMetrics = (assets ?? []).map((asset: any) => {
       const category = asset.asset_categories?.[0];
       const depreciationRate = category?.depreciation_rate ?? 10;
+      // Only a purchase year is captured now (not a full date) — treat it
+      // as Jan 1 of that year for the depreciation clock.
+      const purchaseDate = asset.purchase_year ? new Date(asset.purchase_year, 0, 1) : new Date();
 
       const depreciation = calculateAssetDepreciation(
-        asset.purchase_price ?? 0,
+        asset.purchase_value ?? 0,
         depreciationRate,
-        asset.purchase_date ?? new Date().toISOString()
+        purchaseDate
       );
 
       return {
@@ -63,6 +66,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         category: category?.name,
         status: asset.status,
         condition: asset.condition,
+        make: asset.make,
+        purchaseYear: asset.purchase_year,
+        purchaseValue: asset.purchase_value,
+        warrantyYears: asset.warranty_years,
         ...depreciation,
       };
     });

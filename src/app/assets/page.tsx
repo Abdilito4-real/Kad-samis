@@ -10,8 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ResponsiveGrid } from "@/components/layout/ResponsiveGrid";
 import { MetricCard } from "@/components/layout/MetricCard";
-import { Plus, Download, Package2, ShieldCheck, Wrench, ArrowRightLeft } from "lucide-react";
+import { Upload, Download, Package2, ShieldCheck, Wrench, ArrowRightLeft } from "lucide-react";
 import { RequestAssetDialog } from "@/components/requests/RequestAssetDialog";
+import { toCSV, downloadCSV } from "@/lib/csv";
+import { ASSET_CSV_HEADERS } from "@/lib/assetImport";
+import { toast } from "sonner";
 
 const STATUS_BADGE: Record<string, string> = {
   active: "bg-emerald-500/10 text-emerald-500",
@@ -121,6 +124,32 @@ export default function AssetsPage() {
 
   const assetItems = assets;
 
+  const handleExport = () => {
+    if (assetItems.length === 0) {
+      toast.error("There are no assets to export yet.");
+      return;
+    }
+
+    const rows: Array<Array<string | number>> = [
+      [...ASSET_CSV_HEADERS],
+      ...assetItems.map((asset, index) => [
+        index + 1,
+        asset.name ?? "",
+        asset.make ?? "",
+        asset.purchase_year ?? "",
+        asset.purchase_value ?? "",
+        asset.condition ?? "",
+        asset.asset_number ?? "",
+        asset.warranty_years ?? "",
+        asset.status ?? "",
+        asset.asset_categories?.[0]?.name ?? "",
+      ]),
+    ];
+
+    downloadCSV(`assets-export-${new Date().toISOString().slice(0, 10)}.csv`, toCSV(rows));
+    toast.success(`Exported ${assetItems.length} asset${assetItems.length === 1 ? "" : "s"}.`);
+  };
+
   // Super Admin doesn't edit assets directly — "View" takes them to the
   // owning organization's page instead of the asset edit form. Falls back
   // to the asset page itself if an asset is somehow missing its org link.
@@ -152,12 +181,12 @@ export default function AssetsPage() {
               {!isSuperAdmin && (
                 <Button variant="outline" size="sm" asChild>
                   <Link href="/assets/create">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Asset
+                    <Upload className="mr-2 h-4 w-4" />
+                    Import Assets
                   </Link>
                 </Button>
               )}
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={handleExport}>
                 <Download className="mr-2 h-4 w-4" />
                 Export
               </Button>

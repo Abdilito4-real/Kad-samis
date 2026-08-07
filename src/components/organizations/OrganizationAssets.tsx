@@ -17,8 +17,9 @@ type Asset = {
   category?: string;
   status?: string;
   condition?: string;
-  purchase_price?: number;
-  purchase_date?: string;
+  make?: string;
+  purchaseYear?: number;
+  purchaseValue?: number;
 };
 
 export default function OrganizationAssets({ orgId }: { orgId: string }) {
@@ -161,6 +162,7 @@ export default function OrganizationAssets({ orgId }: { orgId: string }) {
                   </div>
                   <p className="text-sm text-muted-foreground mb-3">
                     Tag: {asset.asset_tag || asset.assetNumber || 'N/A'} • Category: {asset.category || 'N/A'}
+                    {asset.make ? ` • ${asset.make}` : ''}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {asset.condition && (
@@ -176,15 +178,13 @@ export default function OrganizationAssets({ orgId }: { orgId: string }) {
                   </div>
                 </div>
                 <div className="text-right">
-                  {asset.purchase_price && (
+                  {typeof asset.purchaseValue === 'number' && (
                     <p className="text-sm font-semibold text-green-600">
-                      ₦{asset.purchase_price.toLocaleString('en-NG', { maximumFractionDigits: 0 })}
+                      ₦{asset.purchaseValue.toLocaleString('en-NG', { maximumFractionDigits: 0 })}
                     </p>
                   )}
-                  {asset.purchase_date && (
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(asset.purchase_date).toLocaleDateString()}
-                    </p>
+                  {asset.purchaseYear && (
+                    <p className="text-xs text-muted-foreground">{asset.purchaseYear}</p>
                   )}
                 </div>
               </div>

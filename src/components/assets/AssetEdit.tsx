@@ -16,15 +16,10 @@ interface AssetEditProps {
     category_id: string;
     condition: string;
     status: string;
-    manufacturer: string | null;
-    model: string | null;
-    serial_number: string | null;
-    purchase_date: string | null;
-    purchase_price: number | null;
-    current_value: number | null;
-    warranty_expiry: string | null;
-    funding_source: string | null;
-    notes: string | null;
+    make: string | null;
+    purchase_year: number | null;
+    purchase_value: number | null;
+    warranty_years: number | null;
   };
 }
 
@@ -38,15 +33,10 @@ export function AssetEdit({ asset }: AssetEditProps) {
     categoryId: asset.category_id,
     condition: asset.condition,
     status: asset.status,
-    manufacturer: asset.manufacturer || "",
-    model: asset.model || "",
-    serialNumber: asset.serial_number || "",
-    purchaseDate: asset.purchase_date ? asset.purchase_date.slice(0, 10) : "",
-    purchasePrice: asset.purchase_price !== null ? asset.purchase_price.toString() : "",
-    currentValue: asset.current_value !== null ? asset.current_value.toString() : "",
-    warrantyExpiry: asset.warranty_expiry ? asset.warranty_expiry.slice(0, 10) : "",
-    fundingSource: asset.funding_source || "",
-    notes: asset.notes || "",
+    make: asset.make || "",
+    purchaseYear: asset.purchase_year !== null ? asset.purchase_year.toString() : "",
+    purchaseValue: asset.purchase_value !== null ? asset.purchase_value.toString() : "",
+    warrantyYears: asset.warranty_years !== null ? asset.warranty_years.toString() : "",
   };
 
   const handleSubmit = async (values: AssetFormValues) => {

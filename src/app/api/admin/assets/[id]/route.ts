@@ -4,7 +4,7 @@ import { createServerSideClient } from '@/lib/supabase/server';
 import { getProfile, getSupabaseFromRequest, writeAudit } from '@/lib/supabase/serverHelpers';
 
 const ASSET_COLUMNS =
-  'id, asset_number, name, category_id, condition, status, manufacturer, model, serial_number, purchase_date, purchase_price, current_value, warranty_expiry, funding_source, notes, organization_id, created_at, updated_at';
+  'id, asset_number, name, category_id, condition, status, make, purchase_year, purchase_value, warranty_years, organization_id, created_at, updated_at';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -90,15 +90,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (body.categoryId !== undefined) payload.category_id = body.categoryId;
     if (body.condition !== undefined) payload.condition = body.condition;
     if (body.status !== undefined) payload.status = body.status;
-    if (body.manufacturer !== undefined) payload.manufacturer = body.manufacturer || null;
-    if (body.model !== undefined) payload.model = body.model || null;
-    if (body.serialNumber !== undefined) payload.serial_number = body.serialNumber || null;
-    if (body.purchaseDate !== undefined) payload.purchase_date = body.purchaseDate || null;
-    if (body.purchasePrice !== undefined) payload.purchase_price = body.purchasePrice ? Number(body.purchasePrice) : null;
-    if (body.currentValue !== undefined) payload.current_value = body.currentValue ? Number(body.currentValue) : null;
-    if (body.warrantyExpiry !== undefined) payload.warranty_expiry = body.warrantyExpiry || null;
-    if (body.fundingSource !== undefined) payload.funding_source = body.fundingSource || null;
-    if (body.notes !== undefined) payload.notes = body.notes || null;
+    if (body.make !== undefined) payload.make = body.make || null;
+    if (body.purchaseYear !== undefined) payload.purchase_year = body.purchaseYear ? Number(body.purchaseYear) : null;
+    if (body.purchaseValue !== undefined) payload.purchase_value = body.purchaseValue ? Number(body.purchaseValue) : null;
+    if (body.warrantyYears !== undefined) payload.warranty_years = body.warrantyYears ? Number(body.warrantyYears) : null;
 
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const serviceRoleClient = serviceRoleKey && process.env.NEXT_PUBLIC_SUPABASE_URL
