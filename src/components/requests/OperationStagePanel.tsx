@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Wrench, UserCog, CheckCircle2 } from "lucide-react";
 import { StageProgressBar } from "@/components/requests/StageProgressBar";
 
@@ -221,19 +222,18 @@ export function OperationStagePanel({ request, viewerRole, viewerId, onUpdate }:
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label htmlFor="operator-select">Operational Manager</Label>
-                <select
-                  id="operator-select"
-                  value={selectedOperatorId}
-                  onChange={(e) => setSelectedOperatorId(e.target.value)}
-                  className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
-                >
-                  <option value="">Select an Operational Manager…</option>
-                  {operators.map((op) => (
-                    <option key={op.id} value={op.id}>
-                      {op.username || op.email}
-                    </option>
-                  ))}
-                </select>
+                <Select value={selectedOperatorId} onValueChange={setSelectedOperatorId}>
+                  <SelectTrigger id="operator-select">
+                    <SelectValue placeholder="Select an Operational Manager…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {operators.map((op) => (
+                      <SelectItem key={op.id} value={op.id}>
+                        {op.username || op.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="assign-note">Note (optional)</Label>
@@ -257,19 +257,18 @@ export function OperationStagePanel({ request, viewerRole, viewerId, onUpdate }:
       {isAssignedOperator && request.status === "in_operation" && nextStages.length > 0 && (
         <div className="border-t border-slate-200 dark:border-slate-800 pt-4 space-y-3">
           <Label htmlFor="stage-select">Move to next stage</Label>
-          <select
-            id="stage-select"
-            value={selectedStage}
-            onChange={(e) => setSelectedStage(e.target.value as Stage)}
-            className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
-          >
-            <option value="">Select a stage…</option>
-            {nextStages.map((stage) => (
-              <option key={stage} value={stage}>
-                {STAGE_LABELS[stage]}
-              </option>
-            ))}
-          </select>
+          <Select value={selectedStage} onValueChange={(value) => setSelectedStage(value as Stage)}>
+            <SelectTrigger id="stage-select">
+              <SelectValue placeholder="Select a stage…" />
+            </SelectTrigger>
+            <SelectContent>
+              {nextStages.map((stage) => (
+                <SelectItem key={stage} value={stage}>
+                  {STAGE_LABELS[stage]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <div className="space-y-2">
             <Label htmlFor="stage-note">Update note</Label>
             <Textarea

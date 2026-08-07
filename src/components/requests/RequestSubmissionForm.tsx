@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Send, Wrench } from "lucide-react";
 
 interface PresetAsset {
@@ -135,35 +136,35 @@ export function RequestSubmissionForm({ onSuccess, presetAsset }: RequestSubmiss
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="workType">Request Type</Label>
-          <select
-            id="workType"
-            value={workType}
-            onChange={(e) => handleWorkTypeChange(e.target.value as WorkType)}
-            className="w-full rounded-2xl border border-input bg-background px-4 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
-          >
-            {workTypes.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </select>
+          <Select value={workType} onValueChange={(value) => handleWorkTypeChange(value as WorkType)}>
+            <SelectTrigger id="workType">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {workTypes.map((t) => (
+                <SelectItem key={t.value} value={t.value}>
+                  {t.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <p className="text-xs text-muted-foreground">{workTypes.find((t) => t.value === workType)?.description}</p>
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="priority">Priority</Label>
-          <select
-            id="priority"
-            value={priority}
-            onChange={(e) => setPriority(e.target.value)}
-            className="w-full rounded-2xl border border-input bg-background px-4 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
-          >
-            {priorities.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </select>
+          <Select value={priority} onValueChange={setPriority}>
+            <SelectTrigger id="priority">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {priorities.map((p) => (
+                <SelectItem key={p.value} value={p.value}>
+                  {p.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

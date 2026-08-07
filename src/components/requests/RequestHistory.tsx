@@ -10,6 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Loader2, AlertCircle, CheckCircle, Clock, XCircle, ArrowUp, Send, ChevronRight, Wrench } from "lucide-react";
 import { StageProgressBar } from "@/components/requests/StageProgressBar";
 import {
+  ResponsiveList,
+  ResponsiveListRow,
+  ResponsiveListDetailGrid,
+  ResponsiveListField,
+} from "@/components/layout/ResponsiveList";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -256,93 +262,86 @@ export function RequestHistory({ orgId }: RequestHistoryProps) {
           </p>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <ResponsiveList>
           {requests.map((request) => (
-            <Card
+            <ResponsiveListRow
               key={request.id}
-              className="p-6 hover:shadow-md transition-shadow cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/50"
               onClick={() => router.push(`/requests/${request.id}`)}
             >
-              <div className="space-y-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3">
-                      <h4 className="font-semibold text-slate-900 dark:text-slate-50 truncate">
-                        {request.title}
-                      </h4>
-                      {statusIcons[request.status]}
-                    </div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                      {request.description}
-                    </p>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3">
+                    <h4 className="font-semibold text-slate-900 dark:text-slate-50 truncate">
+                      {request.title}
+                    </h4>
+                    {statusIcons[request.status]}
                   </div>
-                  <ChevronRight className="h-5 w-5 text-slate-400 flex-shrink-0 mt-1" />
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                    {request.description}
+                  </p>
                 </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <Badge className={typeLabels[request.type] ? "bg-slate-100 text-slate-800 dark:bg-slate-900/30" : ""}>
-                    {typeLabels[request.type] || request.type}
-                  </Badge>
-                  <Badge className={priorityColors[request.priority]}>
-                    {request.priority.charAt(0).toUpperCase() + request.priority.slice(1)} Priority
-                  </Badge>
-                  <Badge className={statusColors[request.status]}>
-                    {statusLabels[request.status] ?? request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                  </Badge>
-                </div>
-
-                {request.current_stage && (
-                  <StageProgressBar currentStage={request.current_stage} />
-                )}
-
-                <div className="grid gap-4 text-sm sm:grid-cols-3">
-                  <div>
-                    <p className="text-slate-600 dark:text-slate-400">Organization</p>
-                    <p className="font-medium">{request.organizations?.name || "Organization unavailable"}</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-600 dark:text-slate-400">Submitted</p>
-                    <p className="font-medium">
-                      {new Date(request.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-slate-600 dark:text-slate-400">Status Updated</p>
-                    <p className="font-medium">
-                      {new Date(request.updated_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-
-                {request.notes && (
-                  <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-900/30">
-                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                      Super Admin Notes
-                    </p>
-                    <p className="text-sm text-slate-900 dark:text-slate-50">{request.notes}</p>
-                  </div>
-                )}
-
-                {!isSuperAdmin && request.status === "pending" && (
-                  <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
-                    <Button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEscalateClick(request);
-                      }}
-                      variant="outline"
-                      size="sm"
-                      className="gap-2 hover:border-purple-400 hover:text-purple-600"
-                    >
-                      <ArrowUp className="h-4 w-4" />
-                      Escalate to Super Admin
-                    </Button>
-                  </div>
-                )}
+                <ChevronRight className="h-5 w-5 text-slate-400 flex-shrink-0 mt-1" />
               </div>
-            </Card>
+
+              <div className="flex flex-wrap gap-2">
+                <Badge className={typeLabels[request.type] ? "bg-slate-100 text-slate-800 dark:bg-slate-900/30" : ""}>
+                  {typeLabels[request.type] || request.type}
+                </Badge>
+                <Badge className={priorityColors[request.priority]}>
+                  {request.priority.charAt(0).toUpperCase() + request.priority.slice(1)} Priority
+                </Badge>
+                <Badge className={statusColors[request.status]}>
+                  {statusLabels[request.status] ?? request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                </Badge>
+              </div>
+
+              {request.current_stage && (
+                <StageProgressBar currentStage={request.current_stage} />
+              )}
+
+              <ResponsiveListDetailGrid cols={3}>
+                <ResponsiveListField
+                  label="Organization"
+                  value={request.organizations?.name || "Organization unavailable"}
+                />
+                <ResponsiveListField
+                  label="Submitted"
+                  value={new Date(request.created_at).toLocaleDateString()}
+                />
+                <ResponsiveListField
+                  label="Status Updated"
+                  value={new Date(request.updated_at).toLocaleDateString()}
+                />
+              </ResponsiveListDetailGrid>
+
+              {request.notes && (
+                <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-900/30">
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
+                    Super Admin Notes
+                  </p>
+                  <p className="text-sm text-slate-900 dark:text-slate-50">{request.notes}</p>
+                </div>
+              )}
+
+              {!isSuperAdmin && request.status === "pending" && (
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEscalateClick(request);
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 hover:border-purple-400 hover:text-purple-600"
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                    Escalate to Super Admin
+                  </Button>
+                </div>
+              )}
+            </ResponsiveListRow>
           ))}
-        </div>
+        </ResponsiveList>
       )}
 
       <Dialog open={escalateDialogOpen} onOpenChange={setEscalateDialogOpen}>
