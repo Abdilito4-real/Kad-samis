@@ -7,10 +7,11 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth-provider";
 import { useUnreadNotifications } from "@/hooks/useUnreadNotifications";
 import { displayIdentity } from "@/lib/displayIdentity";
-import { Avatar, AvatarInitials } from "@/components/ui/avatar";
+import { Avatar } from "@/components/ui/avatar";
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
+  User,
   Package,
   Wrench,
   ClipboardList,
@@ -228,9 +229,6 @@ export function DashboardSidebar({ mobileOpen = false, onMobileClose }: Dashboar
   }, [activeNavigationGroups, query]);
 
   const identity = user ? displayIdentity({ email: user.email, username: user.username, role: user.roleId }) : "Account";
-  const displayName = user?.firstName
-    ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ""}`
-    : identity;
   const roleLabel = user?.roleId ? ROLE_LABELS[user.roleId] ?? user.roleId.replace(/_/g, " ") : "Guest";
 
   return (
@@ -345,7 +343,7 @@ export function DashboardSidebar({ mobileOpen = false, onMobileClose }: Dashboar
         className="mt-3 flex items-center gap-3 rounded-2xl border border-border bg-card px-3 py-2.5 transition-colors hover:border-primary/40"
       >
         <Avatar>
-          <AvatarInitials name={displayName} />
+          <User className="h-4 w-4" />
         </Avatar>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold leading-none">{roleLabel}</p>

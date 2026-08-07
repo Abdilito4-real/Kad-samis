@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarInitials } from "@/components/ui/avatar";
+import { Avatar } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +30,7 @@ import {
   Sun,
   Circle,
   Building2,
+  User,
 } from "lucide-react";
 
 interface DashboardHeaderProps {
@@ -53,9 +54,6 @@ export function DashboardHeader({ onOpenCommandPalette, onOpenMobileMenu }: Dash
   const identity = user
     ? displayIdentity({ email: user.email, username: user.username, role: user.roleId })
     : "Account";
-  const displayName = user?.firstName
-    ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ""}`
-    : identity;
   const roleLabel = user?.roleId ? ROLE_LABELS[user.roleId] ?? user.roleId.replace(/_/g, " ") : "Guest";
 
   useEffect(() => {
@@ -201,7 +199,7 @@ export function DashboardHeader({ onOpenCommandPalette, onOpenMobileMenu }: Dash
                 className="flex h-12 items-center gap-2 rounded-full border border-border bg-background/70 py-1 pl-1 pr-2 transition hover:border-primary/40 sm:pr-3"
               >
                 <Avatar className="h-8 w-8">
-                  <AvatarInitials name={displayName} />
+                  <User className="h-4 w-4" />
                 </Avatar>
                 <span className="hidden text-sm font-medium sm:inline">{roleLabel}</span>
               </button>
