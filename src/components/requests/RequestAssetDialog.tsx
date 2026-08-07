@@ -19,7 +19,7 @@ interface RequestAssetDialogProps {
   assetNumber?: string | null;
   triggerLabel?: string;
   triggerVariant?: "default" | "outline" | "ghost" | "secondary" | "destructive" | "link";
-  triggerSize?: "default" | "sm" | "lg" | "icon";
+  triggerSize?: "default" | "sm" | "lg" | "icon" | "icon-lg";
   triggerClassName?: string;
 }
 

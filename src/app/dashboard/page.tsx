@@ -20,6 +20,8 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ResponsiveGrid } from "@/components/layout/ResponsiveGrid";
+import { MetricCard } from "@/components/layout/MetricCard";
 import { useAuth } from "@/components/auth-provider";
 import { createClient } from "@/lib/supabase/client";
 import { displayIdentity } from "@/lib/displayIdentity";
@@ -441,42 +443,36 @@ export default function DashboardPage() {
       </motion.div>
 
       {statsToRender.length > 0 ? (
-        <motion.div
-          initial="hidden"
-          animate="show"
-          className="grid items-stretch gap-4 md:grid-cols-2 xl:grid-cols-4"
-        >
-          {statsToRender.map((stat, index) => {
-            const Icon = stat.icon;
-            const tone = TONE_STYLES[stat.tone];
-            return (
-              <motion.div
-                key={stat.title}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.08 }}
-                whileHover={{ y: -4 }}
-                className="h-full"
-              >
-                <Card className="flex h-full flex-col overflow-hidden">
-                  <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
-                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${tone.chip} ${tone.icon}`}>
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex flex-1 flex-col">
-                    <div className="text-3xl font-semibold tabular-nums text-foreground">{stat.value}</div>
-                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{stat.detail}</p>
-                    <div className="mt-4 flex flex-1 items-end justify-between border-t border-border pt-3">
-                      <span className="text-xs font-medium text-muted-foreground">— vs last month</span>
-                      <Sparkline stroke={tone.stroke} />
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            );
-          })}
+        <motion.div initial="hidden" animate="show">
+          <ResponsiveGrid cols={{ base: 1, md: 2, xl: 4 }}>
+            {statsToRender.map((stat, index) => {
+              const tone = TONE_STYLES[stat.tone];
+              return (
+                <motion.div
+                  key={stat.title}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.08 }}
+                  whileHover={{ y: -4 }}
+                  className="h-full"
+                >
+                  <MetricCard
+                    title={stat.title}
+                    value={stat.value}
+                    icon={stat.icon}
+                    tone={stat.tone}
+                    detail={stat.detail}
+                    trailing={
+                      <div className="flex items-end justify-between border-t border-border pt-3">
+                        <span className="text-xs font-medium text-muted-foreground">— vs last month</span>
+                        <Sparkline stroke={tone.stroke} />
+                      </div>
+                    }
+                  />
+                </motion.div>
+              );
+            })}
+          </ResponsiveGrid>
         </motion.div>
       ) : (
         <Card className="border-dashed border-border/80 bg-background/70">

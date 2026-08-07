@@ -8,6 +8,8 @@ import { useAuth } from "@/components/auth-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ResponsiveGrid } from "@/components/layout/ResponsiveGrid";
+import { MetricCard } from "@/components/layout/MetricCard";
 import { Plus, Download, Package2, ShieldCheck, Wrench, ArrowRightLeft } from "lucide-react";
 import { RequestAssetDialog } from "@/components/requests/RequestAssetDialog";
 
@@ -162,27 +164,16 @@ export default function AssetsPage() {
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <ResponsiveGrid cols={{ base: 1, md: 2, xl: 4 }}>
             {[
-              { title: "Registered assets", value: assetItems.length.toString(), icon: Package2 },
-              { title: "In service", value: assetItems.filter((item) => item.status === "active").length.toString(), icon: ShieldCheck },
-              { title: "Maintenance", value: assetItems.filter((item) => item.status === "maintenance").length.toString(), icon: Wrench },
-              { title: "Recently added", value: assetItems.slice(0, 5).length.toString(), icon: ArrowRightLeft },
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <Card key={item.title}>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium">{item.title}</CardTitle>
-                    <Icon className="h-4 w-4 text-primary" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-semibold">{item.value}</div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+              { title: "Registered assets", value: assetItems.length, icon: Package2, tone: "neutral" as const },
+              { title: "In service", value: assetItems.filter((item) => item.status === "active").length, icon: ShieldCheck, tone: "emerald" as const },
+              { title: "Maintenance", value: assetItems.filter((item) => item.status === "maintenance").length, icon: Wrench, tone: "amber" as const },
+              { title: "Recently added", value: assetItems.slice(0, 5).length, icon: ArrowRightLeft, tone: "sky" as const },
+            ].map((item) => (
+              <MetricCard key={item.title} title={item.title} value={item.value} icon={item.icon} tone={item.tone} />
+            ))}
+          </ResponsiveGrid>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -218,8 +209,8 @@ export default function AssetsPage() {
                               assetNumber={asset.asset_number}
                               triggerLabel=""
                               triggerVariant="ghost"
-                              triggerSize="icon"
-                              triggerClassName="h-8 w-8 p-0"
+                              triggerSize="icon-lg"
+                              triggerClassName="p-0"
                             />
                           )}
                           <Link href={assetLinkHref(asset)} className="text-sm font-medium text-primary hover:underline">

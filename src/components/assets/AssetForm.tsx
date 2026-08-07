@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export interface AssetCategory {
   id: string;
@@ -145,68 +146,63 @@ export function AssetForm({ initialValues, onSubmit, submitLabel }: Props) {
       <div className="grid gap-4 md:grid-cols-3">
         <div className="space-y-2">
           <Label htmlFor="categoryId">Category</Label>
-          <select
-            id="categoryId"
+          <Select
             value={values.categoryId}
-            onChange={(event) => handleChange("categoryId", event.target.value)}
-            className="w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
-            required
+            onValueChange={(value) => handleChange("categoryId", value)}
             disabled={loadingCategories || categories.length === 0}
           >
-            {loadingCategories ? (
-              <option value="" disabled>
-                Loading categories...
-              </option>
-            ) : categories.length === 0 ? (
-              <option value="" disabled>
-                No categories available
-              </option>
-            ) : (
-              <>
-                <option value="">Select a category</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </>
-            )}
-          </select>
+            <SelectTrigger id="categoryId">
+              <SelectValue
+                placeholder={
+                  loadingCategories
+                    ? "Loading categories..."
+                    : categories.length === 0
+                      ? "No categories available"
+                      : "Select a category"
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((category) => (
+                <SelectItem key={category.id} value={category.id}>
+                  {category.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {categoryError ? (
             <p className="mt-2 text-sm text-red-500">{categoryError}</p>
           ) : null}
         </div>
         <div className="space-y-2">
           <Label htmlFor="condition">Condition</Label>
-          <select
-            id="condition"
-            value={values.condition}
-            onChange={(event) => handleChange("condition", event.target.value)}
-            className="w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
-            required
-          >
-            {conditions.map((condition) => (
-              <option key={condition} value={condition}>
-                {condition.charAt(0).toUpperCase() + condition.slice(1)}
-              </option>
-            ))}
-          </select>
+          <Select value={values.condition} onValueChange={(value) => handleChange("condition", value)}>
+            <SelectTrigger id="condition">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {conditions.map((condition) => (
+                <SelectItem key={condition} value={condition}>
+                  {condition.charAt(0).toUpperCase() + condition.slice(1)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-2">
           <Label htmlFor="status">Status</Label>
-          <select
-            id="status"
-            value={values.status}
-            onChange={(event) => handleChange("status", event.target.value)}
-            className="w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
-            required
-          >
-            {statuses.map((status) => (
-              <option key={status} value={status}>
-                {status.charAt(0).toUpperCase() + status.slice(1)}
-              </option>
-            ))}
-          </select>
+          <Select value={values.status} onValueChange={(value) => handleChange("status", value)}>
+            <SelectTrigger id="status">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {statuses.map((status) => (
+                <SelectItem key={status} value={status}>
+                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
