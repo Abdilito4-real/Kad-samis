@@ -114,7 +114,7 @@ export default function LoginPageContent() {
     <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(15,118,110,0.14),_transparent_25%),linear-gradient(135deg,_#f8fafc,_#eef5f8)] transition-colors dark:bg-background dark:bg-none">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,_rgba(37,99,235,0.16),_transparent_35%)] dark:bg-[radial-gradient(circle_at_bottom_right,_rgba(16,185,129,0.08),_transparent_35%)]" />
 
-      <div className="relative mx-auto flex min-h-screen max-w-7xl items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
+      <div className="relative mx-auto flex min-h-screen max-w-7xl items-center justify-center px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -172,37 +172,37 @@ export default function LoginPageContent() {
             </div>
           </div>
 
-          <div className="p-6 sm:p-8 lg:p-10">
+          <div className="p-4 sm:p-8 lg:p-10">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 overflow-hidden rounded-2xl border border-border bg-background shadow-sm">
+                <div className="flex h-10 w-10 shrink-0 overflow-hidden rounded-2xl border border-border bg-background shadow-sm sm:h-12 sm:w-12">
                   <img src="/images/auth/kaduna-state.svg" alt="Kaduna State logo" className="h-full w-full rounded-2xl object-cover" />
                 </div>
-                <div>
-                  <h2 className="text-xl font-semibold text-foreground">KAD-SAMIS</h2>
-                  <p className="text-sm text-muted-foreground">Government asset management</p>
+                <div className="min-w-0">
+                  <h2 className="truncate text-lg font-semibold text-foreground sm:text-xl">KAD-SAMIS</h2>
+                  <p className="truncate text-xs text-muted-foreground sm:text-sm">Government asset management</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="rounded-full border border-border bg-background p-2 text-muted-foreground shadow-sm transition hover:border-emerald-400/40 hover:bg-emerald-500/10 hover:text-emerald-500"
+                className="shrink-0 rounded-full border border-border bg-background p-2 text-muted-foreground shadow-sm transition hover:border-emerald-400/40 hover:bg-emerald-500/10 hover:text-emerald-500"
                 aria-label="Toggle theme"
               >
                 {mounted && theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </button>
             </div>
 
-            <div className="mt-8 rounded-[24px] border border-border bg-background/60 p-6 shadow-sm">
-              <div className="space-y-2">
+            <div className="mt-4 rounded-[24px] border border-border bg-background/60 p-4 shadow-sm sm:mt-8 sm:p-6">
+              <div className="space-y-1.5 sm:space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">Welcome back</p>
-                <h3 className="text-2xl font-semibold text-foreground">Secure portal access</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className="text-xl font-semibold text-foreground sm:text-2xl">Secure portal access</h3>
+                <p className="hidden text-sm text-muted-foreground sm:block">
                   Sign in to continue with ministry workflows, inspections, and approvals.
                 </p>
               </div>
 
-              <form onSubmit={handleLogin} className="mt-6 space-y-4">
+              <form onSubmit={handleLogin} className="mt-4 space-y-3 sm:mt-6 sm:space-y-4">
                 {successMessage ? (
                   <div className="flex items-start gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-3 text-sm text-emerald-500">
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
@@ -255,7 +255,7 @@ export default function LoginPageContent() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <div className="flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
                   <label className="flex items-center gap-2">
                     <input type="checkbox" className="rounded border-input accent-emerald-500" />
                     Keep me signed in
@@ -277,11 +277,11 @@ export default function LoginPageContent() {
                 </Button>
               </form>
 
-              <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4 text-sm text-muted-foreground">
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3 text-sm text-muted-foreground sm:mt-6 sm:pt-4">
                 <Link href="/" className="font-medium text-primary hover:underline">
                   Back to home
                 </Link>
-                <span>Support • System status • Version 1.0.0</span>
+                <span className="hidden sm:inline">Support • System status • Version 1.0.0</span>
               </div>
             </div>
           </div>

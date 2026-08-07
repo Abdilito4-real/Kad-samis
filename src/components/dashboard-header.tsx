@@ -124,7 +124,9 @@ export function DashboardHeader({ onOpenCommandPalette, onOpenMobileMenu }: Dash
               </div>
             ))}
           </div>
-          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+          {/* Status pills — hidden below sm, where three wrapping pills next to
+              breadcrumbs just ate the row; still useful once there's room. */}
+          <div className="hidden flex-wrap items-center gap-3 text-xs text-muted-foreground sm:flex">
             <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background/70 px-2.5 py-1">
               <Circle className="h-2.5 w-2.5 fill-emerald-500 text-emerald-500" />
               Online
@@ -170,14 +172,6 @@ export function DashboardHeader({ onOpenCommandPalette, onOpenMobileMenu }: Dash
               </Link>
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Toggle theme"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          >
-            {mounted && theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </Button>
           <Button asChild variant="ghost" size="icon" aria-label="Notifications" className="relative">
             <Link href="/notifications" className="relative flex items-center justify-center">
               <Bell className="h-4 w-4" />
@@ -213,6 +207,16 @@ export function DashboardHeader({ onOpenCommandPalette, onOpenMobileMenu }: Dash
                   <Settings className="h-4 w-4" />
                   Settings
                 </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={(event) => {
+                  // Keep the menu open — flipping the theme shouldn't dismiss it.
+                  event.preventDefault();
+                  setTheme(theme === "dark" ? "light" : "dark");
+                }}
+              >
+                {mounted && theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                {mounted && theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleSignOut}>
