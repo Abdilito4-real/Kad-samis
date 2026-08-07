@@ -20,6 +20,10 @@ export default function RootLayout({
         <meta name="theme-color" content="#ffffff" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="icon" href="/favicon.ico" />
+        {/* iOS "Add to Home Screen" doesn't read manifest.json icons — it needs
+            its own apple-touch-icon link, otherwise it falls back to a
+            screenshot of the page instead of the branded icon. */}
+        <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
       <body className="min-h-screen bg-background antialiased">
         {/* Light is the first-visit default — next-themes persists to localStorage
