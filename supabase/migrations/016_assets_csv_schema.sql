@@ -10,34 +10,71 @@
 -- funding_source, supplier_id, latitude, longitude, building_id, floor_id,
 -- room_id, assigned_officer_id, notes. None of these are referenced by any
 -- RLS policy, trigger, or view — safe to drop outright.
+--
+-- Every step below is guarded with an information_schema/pg_constraint
+-- check rather than assuming the table matches 001/003's original
+-- definition — the live table has already drifted from those files once
+-- (this migration originally failed with "column manufacturer does not
+-- exist"), so each rename/add/constraint only runs if its precondition
+-- actually holds. Safe to run more than once.
 
--- 1) Rename columns that map 1:1 onto a renamed CSV field.
-ALTER TABLE assets RENAME COLUMN manufacturer TO make;
-ALTER TABLE assets RENAME COLUMN purchase_price TO purchase_value;
+-- 1) Rename columns that map 1:1 onto a renamed CSV field — but only if
+--    the old name exists and the new name doesn't already exist.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'assets' AND column_name = 'manufacturer')
+     AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'assets' AND column_name = 'make') THEN
+    ALTER TABLE assets RENAME COLUMN manufacturer TO make;
+  END IF;
 
--- 2) Add the two fields that replace date-based columns with plain
---    integers (the CSV template only asks for a year / a duration).
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'assets' AND column_name = 'purchase_price')
+     AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'assets' AND column_name = 'purchase_value') THEN
+    ALTER TABLE assets RENAME COLUMN purchase_price TO purchase_value;
+  END IF;
+END $$;
+
+-- 2) Make sure every target column exists, whether or not step 1 found
+--    something to rename it from.
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS make TEXT;
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS purchase_value DECIMAL(15, 2);
 ALTER TABLE assets ADD COLUMN IF NOT EXISTS purchase_year INTEGER;
 ALTER TABLE assets ADD COLUMN IF NOT EXISTS warranty_years INTEGER;
 
--- 3) Best-effort backfill from the columns being dropped, so existing
---    assets keep an approximate purchase year / warranty duration instead
---    of going blank.
-UPDATE assets
-SET purchase_year = EXTRACT(YEAR FROM purchase_date)::int
-WHERE purchase_date IS NOT NULL AND purchase_year IS NULL;
+-- 3) Best-effort backfill from the columns being dropped (only if they're
+--    actually present), so existing assets keep an approximate purchase
+--    year / warranty duration instead of going blank.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'assets' AND column_name = 'purchase_date') THEN
+    UPDATE assets
+    SET purchase_year = EXTRACT(YEAR FROM purchase_date)::int
+    WHERE purchase_date IS NOT NULL AND purchase_year IS NULL;
+  END IF;
 
-UPDATE assets
-SET warranty_years = GREATEST(0, EXTRACT(YEAR FROM warranty_expiry)::int - EXTRACT(YEAR FROM purchase_date)::int)
-WHERE warranty_expiry IS NOT NULL AND purchase_date IS NOT NULL AND warranty_years IS NULL;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'assets' AND column_name = 'warranty_expiry')
+     AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'assets' AND column_name = 'purchase_date') THEN
+    UPDATE assets
+    SET warranty_years = GREATEST(0, EXTRACT(YEAR FROM warranty_expiry)::int - EXTRACT(YEAR FROM purchase_date)::int)
+    WHERE warranty_expiry IS NOT NULL AND purchase_date IS NOT NULL AND warranty_years IS NULL;
+  END IF;
+END $$;
 
 -- 4) Sanity constraints matching how these are validated on import.
-ALTER TABLE assets ADD CONSTRAINT assets_purchase_year_range
-  CHECK (purchase_year IS NULL OR (purchase_year BETWEEN 1900 AND 2100));
-ALTER TABLE assets ADD CONSTRAINT assets_warranty_years_nonnegative
-  CHECK (warranty_years IS NULL OR warranty_years >= 0);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'assets_purchase_year_range') THEN
+    ALTER TABLE assets ADD CONSTRAINT assets_purchase_year_range
+      CHECK (purchase_year IS NULL OR (purchase_year BETWEEN 1900 AND 2100));
+  END IF;
 
--- 5) Drop every column no longer part of the schema.
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'assets_warranty_years_nonnegative') THEN
+    ALTER TABLE assets ADD CONSTRAINT assets_warranty_years_nonnegative
+      CHECK (warranty_years IS NULL OR warranty_years >= 0);
+  END IF;
+END $$;
+
+-- 5) Drop every column no longer part of the schema (already safe if a
+--    given column doesn't exist).
 ALTER TABLE assets
   DROP COLUMN IF EXISTS qr_code,
   DROP COLUMN IF EXISTS barcode,
