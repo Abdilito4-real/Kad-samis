@@ -122,7 +122,7 @@ export default function LoginPageContent() {
         >
           {/* Brand panel — intentionally a fixed dark surface regardless of
               site theme, like most government/enterprise login screens. */}
-          <div className="hidden flex-col justify-between bg-[linear-gradient(160deg,_#06120e,_#0b2a22_45%,_#0f172a)] p-8 text-white lg:flex">
+          <div className="hidden min-w-0 flex-col justify-between bg-[linear-gradient(160deg,_#06120e,_#0b2a22_45%,_#0f172a)] p-8 text-white lg:flex">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-sm text-slate-200">
                 <ShieldCheck className="h-4 w-4 text-emerald-400" />
@@ -172,7 +172,7 @@ export default function LoginPageContent() {
             </div>
           </div>
 
-          <div className="p-4 sm:p-8 lg:p-10">
+          <div className="min-w-0 p-4 sm:p-8 lg:p-10">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 overflow-hidden rounded-2xl border border-border bg-background shadow-sm sm:h-12 sm:w-12">

@@ -196,7 +196,7 @@ export default function Home() {
         </header>
 
         <section id="about" className="grid items-center gap-10 px-2 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:px-4 lg:py-24">
-          <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+          <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="min-w-0">
             <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-sm font-medium text-emerald-500">
               <BadgeCheck className="h-4 w-4" />
               Official Government Digital Platform
@@ -238,7 +238,7 @@ export default function Home() {
             </div>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.65 }} className="relative">
+          <motion.div initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.65 }} className="relative min-w-0">
             <div className="absolute inset-0 -z-10 rounded-[32px] bg-[radial-gradient(circle,_rgba(16,185,129,0.16),_transparent_70%)] blur-3xl" />
             {/* Deliberately a fixed dark "product screenshot" panel, like a
                 dashboard preview card — it stays dark regardless of site
