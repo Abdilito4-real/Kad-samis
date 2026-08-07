@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Building2, FileText, Globe2, LayoutDashboard, Mail, Plus, RefreshCcw, Search, Users } from 'lucide-react';
 import StatsCard from '@/components/mdas/StatsCard';
 import LoadingSkeleton from '@/components/mdas/LoadingSkeleton';
-// OrganizationSidebar intentionally not imported here
 import OrganizationCard from '@/components/mdas/OrganizationCard';
 import OrganizationDrawer from '@/components/mdas/OrganizationDrawer';
 import CreateOrganizationDialog from '@/components/mdas/CreateOrganizationDialog';
