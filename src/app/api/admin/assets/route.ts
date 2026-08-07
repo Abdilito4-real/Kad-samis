@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { createServerSideClient } from '@/lib/supabase/server';
 import { writeAudit } from '@/lib/supabase/serverHelpers';
 import { ASSET_CONDITIONS, ASSET_STATUSES } from '@/lib/assetImport';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 interface BulkAssetRow {
   rowNumber: number;
@@ -171,6 +172,11 @@ export async function POST(req: Request) {
 
     if (!ctx.profile.organization_id) {
       return NextResponse.json({ error: 'Your account has no organization assigned' }, { status: 403 });
+    }
+
+    const rateLimit = await checkRateLimit('bulk-import', ctx.user.id);
+    if (!rateLimit.success) {
+      return rateLimitResponse(rateLimit);
     }
 
     if (rows.length === 0) {

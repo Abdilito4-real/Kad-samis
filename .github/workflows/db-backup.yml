@@ -1,0 +1,49 @@
+name: Database backup
+
+# Supabase's free tier has no automatic Point-in-Time-Recovery — Pro and
+# above get that built in and don't need this workflow at all. This is the
+# free-tier substitute: a nightly pg_dump, compressed and kept as a GitHub
+# Actions artifact.
+#
+# Required secret (repo Settings → Secrets and variables → Actions):
+#   SUPABASE_DB_URL — the full Postgres connection string from
+#   Supabase Dashboard → Project Settings → Database → Connection string
+#   (URI, "Session pooler" or direct connection). Never commit this value.
+#
+# Artifact retention is capped at 90 days below and GitHub's own hosted
+# storage isn't meant as long-term archival — for real disaster-recovery
+# guarantees, add a step that pushes the dump to S3/Supabase Storage/etc.
+# once you have a destination picked out.
+on:
+  schedule:
+    - cron: "0 2 * * *" # 02:00 UTC daily
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Dump database
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::SUPABASE_DB_URL secret is not set — see this workflow's header comment."
+            exit 1
+          fi
+          mkdir -p backups
+          timestamp=$(date -u +%Y%m%d-%H%M%S)
+          pg_dump "$SUPABASE_DB_URL" --no-owner --no-privileges --format=custom \
+            --file="backups/backup-${timestamp}.dump"
+          gzip "backups/backup-${timestamp}.dump"
+          echo "BACKUP_NAME=backup-${timestamp}.dump.gz" >> "$GITHUB_ENV"
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BACKUP_NAME }}
+          path: backups/*.gz
+          retention-days: 90

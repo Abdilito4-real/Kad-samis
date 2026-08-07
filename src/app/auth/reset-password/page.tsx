@@ -48,12 +48,12 @@ export default function ResetPasswordPage() {
           // User has a valid recovery session - they can reset password
           setHasToken(true);
         } else {
-          // No session found - check for recovery token in URL hash
+          // No session found - check for recovery token in URL hash. Never
+          // log `hash` itself — it's the raw recovery link fragment and
+          // literally contains the access/refresh tokens in plain text.
           const hash = window.location.hash;
-          console.log("URL hash:", hash);
 
           if (hash.includes("type=recovery") || hash.includes("access_token")) {
-            console.log("Recovery token found in hash, waiting for Supabase to process...");
             // Give Supabase more time to establish session
             await new Promise(resolve => setTimeout(resolve, 1500));
 

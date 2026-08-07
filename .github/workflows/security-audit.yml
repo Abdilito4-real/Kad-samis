@@ -1,0 +1,45 @@
+name: Security audit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Catches newly-disclosed CVEs in dependencies that haven't changed —
+    # push/PR triggers alone only re-scan when package.json itself moves.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # Hard gate: nothing critical ships. As of the last full review
+      # (see SECURITY.md) two high-severity findings are known, accepted
+      # residual risk — both are transitive build-tooling dependencies
+      # (Next.js's own bundled postcss; @supabase/ssr's outdated `cookie`
+      # dep) that require a major-version bump needing its own dedicated
+      # testing pass, not something to force through CI. Tracked there,
+      # not silently ignored — re-run `npm audit` locally after any
+      # dependency change to confirm the count hasn't grown.
+      - name: npm audit (critical)
+        run: npm audit --audit-level=critical
+
+      # Informational only — surfaces high/moderate findings in the log
+      # without blocking the build, so new ones are visible without
+      # re-blocking every PR on the two known ones above.
+      - name: npm audit (high — informational)
+        if: always()
+        run: npm audit --audit-level=high || true
+
+      - name: Build
+        run: npm run build

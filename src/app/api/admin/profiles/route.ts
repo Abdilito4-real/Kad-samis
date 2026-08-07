@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createServerSideClient } from '@/lib/supabase/server';
 import { getProfile, getSupabaseFromRequest, writeAudit } from '@/lib/supabase/serverHelpers';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 export async function GET(req: Request) {
   try {
@@ -60,6 +61,13 @@ export async function POST(req: Request) {
 
     if (!ctx?.profile || ctx.profile.role !== 'super_admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    // Creates a new auth user — same "sensitive, mint-something-new" class
+    // of action as organization creation and password resets.
+    const rateLimit = await checkRateLimit('auth-sensitive', ctx.user.id);
+    if (!rateLimit.success) {
+      return rateLimitResponse(rateLimit);
     }
 
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;

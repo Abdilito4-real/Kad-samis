@@ -1,10 +1,33 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import { createServerSideClient } from '@/lib/supabase/server';
 import { getProfile, getSupabaseFromRequest, writeAudit } from '@/lib/supabase/serverHelpers';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
+import { parseJsonBody, safeText, emailSchema, passwordSchema, phoneSchema } from '@/lib/validation';
+
+const createOrganizationSchema = z.object({
+  name: safeText(200),
+  organization_type: z.enum(['MINISTRY', 'DEPARTMENT', 'AGENCY']),
+  email: emailSchema.optional().or(z.literal('')),
+  phone: phoneSchema,
+  address: safeText(500, 0).optional().or(z.literal('')),
+  logo: z.string().trim().max(2000).optional().or(z.literal('')),
+  status: z.enum(['active', 'inactive', 'pending']).optional(),
+  admin: z
+    .object({
+      name: safeText(200),
+      email: emailSchema,
+      password: passwordSchema,
+      role: z.enum(['ministry_admin', 'agency_admin', 'department_admin', 'department_head']).optional(),
+    })
+    .optional(),
+});
 
 export async function POST(req: Request) {
-  const body = await req.json();
+  const parsed = await parseJsonBody(req, createOrganizationSchema);
+  if ('error' in parsed) return parsed.error;
+  const body = parsed.data;
 
   try {
     const requestSupabase = getSupabaseFromRequest(req);
@@ -18,6 +41,13 @@ export async function POST(req: Request) {
 
     if (ctx.profile.role !== 'super_admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Creates an organization and, optionally, its admin auth user in one
+    // call — expensive and sensitive enough to budget tightly per caller.
+    const rateLimit = await checkRateLimit('auth-sensitive', ctx.user.id);
+    if (!rateLimit.success) {
+      return rateLimitResponse(rateLimit);
     }
 
     if (!serviceRoleKey) {
