@@ -7,13 +7,15 @@ import { motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
 import { createClient } from "@/lib/supabase/client";
+import { logSignIn } from "@/lib/logSignIn";
+import { hasEnrolledPasskeyOnThisDevice, signInWithPasskey, supportsBiometricSignIn } from "@/lib/webauthn-client";
 import { Button } from "@/components/ui/button";
 import {
   AlertCircle,
   CheckCircle2,
   Eye,
   EyeOff,
-  Loader2,
+  Fingerprint,
   Lock,
   Mail,
   Moon,
@@ -34,12 +36,64 @@ export default function LoginPageContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricLoading, setBiometricLoading] = useState(false);
 
   const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     setMounted(true);
+    // Gate on both device capability and this device having actually
+    // enrolled a passkey before — showing the button to a first-time
+    // visitor would just lead to an empty account picker with nothing to
+    // pick, since a resident-key passkey only ever lives on the device
+    // that created it.
+    if (!hasEnrolledPasskeyOnThisDevice()) return;
+    supportsBiometricSignIn().then(setBiometricAvailable);
   }, []);
+
+  /** Shared by both the password and passkey paths — once a session
+   * exists, the rest of "finish signing in" is identical either way. */
+  const completeSignIn = async (accessToken: string, userId: string, method: "password" | "passkey") => {
+    if (!supabase) return;
+
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .select("id, role, organization_id")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (profileError) {
+      console.warn("Profile lookup after login failed", profileError);
+    }
+
+    logSignIn(accessToken, method);
+
+    toast.success("Signed in successfully", {
+      description: "Preparing your secure workspace…",
+    });
+    window.setTimeout(() => router.push("/auth/loading"), 900);
+  };
+
+  const handlePasskeyLogin = async () => {
+    if (!supabase) return;
+    setBiometricLoading(true);
+    setError(null);
+
+    try {
+      const session = await signInWithPasskey(supabase);
+      await completeSignIn(session.access_token, session.user.id, "passkey");
+    } catch (err: any) {
+      const message = err?.message || "Passkey sign-in failed";
+      // A cancelled biometric prompt isn't an error worth alarming over —
+      // the user just changed their mind or backed out.
+      if (!/cancelled/i.test(message)) {
+        toast.error("Unable to sign in with passkey", { description: message });
+      }
+    } finally {
+      setBiometricLoading(false);
+    }
+  };
 
   useEffect(() => {
     const message = searchParams.get("message");
@@ -87,20 +141,7 @@ export default function LoginPageContent() {
           throw new Error(sessionError?.message || "Session was not created");
         }
 
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .select("id, role, organization_id")
-          .eq("id", activeSession.user.id)
-          .maybeSingle();
-
-        if (profileError) {
-          console.warn("Profile lookup after login failed", profileError);
-        }
-
-        toast.success("Signed in successfully", {
-          description: "Preparing your secure workspace…",
-        });
-        window.setTimeout(() => router.push("/auth/loading"), 900);
+        await completeSignIn(activeSession.access_token, activeSession.user.id, "password");
       }
     } catch (_error) {
       const fallback = "An unexpected error occurred";
@@ -207,6 +248,27 @@ export default function LoginPageContent() {
                 </p>
               </div>
 
+              {biometricAvailable ? (
+                <div className="mt-4 space-y-3 sm:mt-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full gap-2 border-emerald-400/40 text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400"
+                    onClick={handlePasskeyLogin}
+                    isLoading={biometricLoading}
+                    loadingText="Verifying…"
+                  >
+                    <Fingerprint className="h-4 w-4" />
+                    Sign in with Face ID / Touch ID
+                  </Button>
+                  <div className="flex items-center gap-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    <span className="h-px flex-1 bg-border" />
+                    or use your password
+                    <span className="h-px flex-1 bg-border" />
+                  </div>
+                </div>
+              ) : null}
+
               <form onSubmit={handleLogin} className="mt-4 space-y-3 sm:mt-6 sm:space-y-4">
                 {successMessage ? (
                   <div className="flex items-start gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-3 text-sm text-emerald-500">
@@ -270,15 +332,8 @@ export default function LoginPageContent() {
                   </Link>
                 </div>
 
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? (
-                    <span className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Signing in…
-                    </span>
-                  ) : (
-                    "Sign in"
-                  )}
+                <Button type="submit" className="w-full" isLoading={loading} loadingText="Signing in…">
+                  Sign in
                 </Button>
               </form>
 

@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Wrench, UserCog, CheckCircle2 } from "lucide-react";
+import { Wrench, UserCog, CheckCircle2 } from "lucide-react";
 import { StageProgressBar } from "@/components/requests/StageProgressBar";
 
 const OPERATIONS_ELIGIBLE_TYPE = "maintenance_approval";
@@ -243,8 +243,7 @@ export function OperationStagePanel({ request, viewerRole, viewerId, onUpdate }:
                 <Button variant="outline" size="sm" onClick={() => setShowAssignForm(false)} disabled={assigning}>
                   Cancel
                 </Button>
-                <Button size="sm" onClick={handleAssign} disabled={assigning} className="bg-emerald-600 hover:bg-emerald-700">
-                  {assigning ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                <Button size="sm" onClick={handleAssign} isLoading={assigning} className="bg-emerald-600 hover:bg-emerald-700">
                   Confirm
                 </Button>
               </div>
@@ -279,8 +278,8 @@ export function OperationStagePanel({ request, viewerRole, viewerId, onUpdate }:
               rows={3}
             />
           </div>
-          <Button onClick={handleStageUpdate} disabled={updatingStage} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
-            {updatingStage ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+          <Button onClick={handleStageUpdate} isLoading={updatingStage} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+            <CheckCircle2 className="h-4 w-4" />
             {selectedStage === "completed" ? "Mark Complete" : "Update Stage"}
           </Button>
         </div>

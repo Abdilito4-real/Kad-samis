@@ -14,6 +14,8 @@ import { AlertCircle, Loader2, Users2, ShieldCheck, UserPlus, Wrench, Plus, X, C
 import { useAuth } from "@/components/auth-provider";
 import { createClient } from "@/lib/supabase/client";
 import { displayIdentity } from "@/lib/displayIdentity";
+import { MetricValueSkeleton } from "@/components/ui/skeletons";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Profile {
   id: string;
@@ -29,6 +31,18 @@ const formatRole = (role: string | null) =>
 
 const ADMIN_ROLES = new Set(["super_admin", "agency_admin", "ministry_admin", "department_head"]);
 const USERNAME_ROLES = new Set(["super_admin", "operational_manager"]);
+
+function UserRowSkeleton() {
+  return (
+    <div className="flex flex-col gap-2 rounded-2xl border border-border bg-background/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0 flex-1 space-y-2">
+        <Skeleton className="h-4 w-1/3" />
+        <Skeleton className="h-3 w-1/2" />
+      </div>
+      <Skeleton className="h-6 w-24 shrink-0 rounded-full" />
+    </div>
+  );
+}
 
 function UserRow({ user, onUsernameSaved }: { user: Profile; onUsernameSaved: (id: string, username: string) => void }) {
   const isOperationalManager = user.role === "operational_manager";
@@ -278,7 +292,7 @@ export default function UsersPage() {
           { title: "Assigned roles", value: protectedRoles, icon: ShieldCheck },
           { title: "Organizations represented", value: new Set(users.map((user) => user.organization_id).filter(Boolean)).size, icon: UserPlus },
         ].map((item) => (
-          <MetricCard key={item.title} title={item.title} value={loading ? "-" : item.value} icon={item.icon} />
+          <MetricCard key={item.title} title={item.title} value={loading ? <MetricValueSkeleton /> : item.value} icon={item.icon} />
         ))}
       </ResponsiveGrid>
 
@@ -340,16 +354,22 @@ export default function UsersPage() {
                 >
                   <X className="h-4 w-4" />
                 </Button>
-                <Button onClick={handleAddOperator} disabled={savingOperator} className="gap-2">
-                  {savingOperator ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wrench className="h-4 w-4" />}
+                <Button onClick={handleAddOperator} isLoading={savingOperator} loadingText="Add" className="gap-2">
+                  <Wrench className="h-4 w-4" />
                   Add
                 </Button>
               </div>
             </CardContent>
           )}
-          {!loading && !error && (
+          {!error && (
             <CardContent className={addingOperator ? "pt-0" : undefined}>
-              {operationalManagers.length === 0 ? (
+              {loading ? (
+                <ResponsiveList>
+                  {Array.from({ length: 2 }).map((_, index) => (
+                    <UserRowSkeleton key={index} />
+                  ))}
+                </ResponsiveList>
+              ) : operationalManagers.length === 0 ? (
                 <p className="py-4 text-sm text-muted-foreground">No Operational Managers yet.</p>
               ) : (
                 <ResponsiveList>
@@ -370,7 +390,11 @@ export default function UsersPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading users...</div>
+            <ResponsiveList>
+              {Array.from({ length: 3 }).map((_, index) => (
+                <UserRowSkeleton key={index} />
+              ))}
+            </ResponsiveList>
           ) : error ? (
             <div className="flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-500"><AlertCircle className="h-4 w-4" /> {error}</div>
           ) : administrators.length === 0 ? (
@@ -392,7 +416,11 @@ export default function UsersPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading users...</div>
+            <ResponsiveList>
+              {Array.from({ length: 3 }).map((_, index) => (
+                <UserRowSkeleton key={index} />
+              ))}
+            </ResponsiveList>
           ) : error ? null : otherStaff.length === 0 ? (
             <p className="py-8 text-sm text-muted-foreground">No other staff profiles were found.</p>
           ) : (

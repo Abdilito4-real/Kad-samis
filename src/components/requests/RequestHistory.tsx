@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, AlertCircle, CheckCircle, Clock, XCircle, ArrowUp, Send, ChevronRight, Wrench } from "lucide-react";
+import { AlertCircle, CheckCircle, Clock, XCircle, ArrowUp, Send, ChevronRight, Wrench } from "lucide-react";
 import { StageProgressBar } from "@/components/requests/StageProgressBar";
 import {
   ResponsiveList,
@@ -15,6 +15,7 @@ import {
   ResponsiveListDetailGrid,
   ResponsiveListField,
 } from "@/components/layout/ResponsiveList";
+import { ResponsiveListSkeleton } from "@/components/ui/skeletons";
 import {
   Dialog,
   DialogContent,
@@ -230,14 +231,6 @@ export function RequestHistory({ orgId }: RequestHistoryProps) {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
@@ -247,6 +240,7 @@ export function RequestHistory({ orgId }: RequestHistoryProps) {
             variant={filter === f ? "default" : "outline"}
             size="sm"
             onClick={() => setFilter(f)}
+            disabled={loading}
             className={filter === f ? "bg-emerald-600 hover:bg-emerald-700" : ""}
           >
             {f === "all" ? "All Requests" : statusLabels[f] ?? f.charAt(0).toUpperCase() + f.slice(1)}
@@ -254,7 +248,9 @@ export function RequestHistory({ orgId }: RequestHistoryProps) {
         ))}
       </div>
 
-      {requests.length === 0 ? (
+      {loading ? (
+        <ResponsiveListSkeleton rows={4} detailCols={3} />
+      ) : requests.length === 0 ? (
         <Card className="p-12 text-center">
           <AlertCircle className="mx-auto h-12 w-12 text-slate-400 mb-4" />
           <p className="text-slate-600 dark:text-slate-400">
@@ -381,20 +377,13 @@ export function RequestHistory({ orgId }: RequestHistoryProps) {
               </Button>
               <Button
                 onClick={handleEscalateSubmit}
-                disabled={isEscalating || !escalationReason.trim()}
+                disabled={!escalationReason.trim()}
+                isLoading={isEscalating}
+                loadingText="Escalating..."
                 className="flex-1 bg-purple-600 hover:bg-purple-700"
               >
-                {isEscalating ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Escalating...
-                  </>
-                ) : (
-                  <>
-                    <Send className="mr-2 h-4 w-4" />
-                    Escalate
-                  </>
-                )}
+                <Send className="mr-2 h-4 w-4" />
+                Escalate
               </Button>
             </div>
           </div>

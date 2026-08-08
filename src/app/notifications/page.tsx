@@ -1,14 +1,34 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BellRing, AlertTriangle, CheckCircle2, Info, Loader2 } from "lucide-react";
+import { BellRing, AlertTriangle, CheckCircle2, Info, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/auth-provider";
 import { PushNotificationsCard } from "@/components/notifications/PushNotificationsCard";
 import { ResponsiveList } from "@/components/layout/ResponsiveList";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+
+const NOTIFICATION_ICONS: Record<string, ReactNode> = {
+  approval: <CheckCircle2 className="h-4 w-4" />,
+  request: <AlertTriangle className="h-4 w-4" />,
+  security: <ShieldCheck className="h-4 w-4" />,
+};
+
+function NotificationRowSkeleton() {
+  return (
+    <div className="flex min-h-12 items-start gap-3 rounded-2xl border border-border bg-background/70 p-4">
+      <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+      <div className="min-w-0 flex-1 space-y-2">
+        <Skeleton className="h-4 w-1/2" />
+        <Skeleton className="h-3 w-3/4" />
+        <Skeleton className="h-2.5 w-20" />
+      </div>
+    </div>
+  );
+}
 
 interface Notification {
   id: string;
@@ -113,7 +133,11 @@ export default function NotificationsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading notifications...</div>
+            <ResponsiveList>
+              {Array.from({ length: 4 }).map((_, index) => (
+                <NotificationRowSkeleton key={index} />
+              ))}
+            </ResponsiveList>
           ) : items.length === 0 ? (
             <p className="py-8 text-sm text-muted-foreground">No notifications yet.</p>
           ) : <ResponsiveList>
@@ -128,7 +152,7 @@ export default function NotificationsPage() {
                 )}
               >
                 <div className="relative mt-0.5 rounded-full bg-primary/10 p-2 text-primary">
-                  {item.type === "approval" ? <CheckCircle2 className="h-4 w-4" /> : item.type === "request" ? <AlertTriangle className="h-4 w-4" /> : <Info className="h-4 w-4" />}
+                  {NOTIFICATION_ICONS[item.type] ?? <Info className="h-4 w-4" />}
                   {!item.read && (
                     <span
                       className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-background"

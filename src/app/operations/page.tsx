@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, ChevronRight, Wrench, ArrowLeft } from "lucide-react";
+import { ChevronRight, Wrench, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { StageProgressBar, type Stage } from "@/components/requests/StageProgressBar";
 import {
@@ -16,6 +16,7 @@ import {
   ResponsiveListDetailGrid,
   ResponsiveListField,
 } from "@/components/layout/ResponsiveList";
+import { ResponsiveListSkeleton } from "@/components/ui/skeletons";
 
 interface OperationRequest {
   id: string;
@@ -80,14 +81,6 @@ export default function OperationsPage() {
     load();
   }, [authLoading, user, filter, isSuperAdmin, operatorId]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
-      </div>
-    );
-  }
-
   const viewingSingleOperator = isSuperAdmin && Boolean(operatorId);
 
   return (
@@ -118,6 +111,7 @@ export default function OperationsPage() {
             variant={filter === f ? "default" : "outline"}
             size="sm"
             onClick={() => setFilter(f)}
+            disabled={loading}
             className={filter === f ? "bg-emerald-600 hover:bg-emerald-700" : ""}
           >
             {f === "all" ? "All" : f === "in_operation" ? "In Operation" : "Completed"}
@@ -125,7 +119,9 @@ export default function OperationsPage() {
         ))}
       </div>
 
-      {requests.length === 0 ? (
+      {loading ? (
+        <ResponsiveListSkeleton rows={4} detailCols={3} />
+      ) : requests.length === 0 ? (
         <Card className="p-12 text-center">
           <Wrench className="mx-auto h-12 w-12 text-slate-400 mb-4" />
           <p className="text-slate-600 dark:text-slate-400">

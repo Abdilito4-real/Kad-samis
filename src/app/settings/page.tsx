@@ -10,11 +10,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ResponsiveGrid } from "@/components/layout/ResponsiveGrid";
 import { MetricCard } from "@/components/layout/MetricCard";
-import { Sun, Moon, User as UserIcon, KeyRound, LayoutDashboard, Loader2, Save, ShieldCheck } from "lucide-react";
+import { Sun, Moon, User as UserIcon, KeyRound, LayoutDashboard, Save, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { createClient } from "@/lib/supabase/client";
 import { displayIdentity } from "@/lib/displayIdentity";
 import { PushNotificationsCard } from "@/components/notifications/PushNotificationsCard";
+import { PasskeysCard } from "@/components/settings/PasskeysCard";
 import { cn } from "@/lib/utils";
 
 const USERNAME_ROLES = new Set(["super_admin", "operational_manager"]);
@@ -170,8 +171,14 @@ export default function SettingsPage() {
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Set a username"
                   />
-                  <Button onClick={handleSaveUsername} disabled={savingUsername || username.trim() === (user?.username ?? "")} className="shrink-0 gap-2">
-                    {savingUsername ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  <Button
+                    onClick={handleSaveUsername}
+                    disabled={username.trim() === (user?.username ?? "")}
+                    isLoading={savingUsername}
+                    loadingText="Save"
+                    className="shrink-0 gap-2"
+                  >
+                    <Save className="h-4 w-4" />
                     Save
                   </Button>
                 </div>
@@ -247,6 +254,9 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Biometric sign-in */}
+      <PasskeysCard />
+
       {/* Security */}
       <Card>
         <CardHeader>
@@ -270,10 +280,12 @@ export default function SettingsPage() {
           </div>
           <Button
             onClick={handleChangePassword}
-            disabled={changingPassword || !currentPassword || !newPassword || !confirmPassword}
+            disabled={!currentPassword || !newPassword || !confirmPassword}
+            isLoading={changingPassword}
+            loadingText="Update password"
             className="gap-2"
           >
-            {changingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+            <KeyRound className="h-4 w-4" />
             Update password
           </Button>
         </CardContent>

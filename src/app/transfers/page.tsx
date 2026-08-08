@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { ResponsiveGrid } from "@/components/layout/ResponsiveGrid";
 import { MetricCard } from "@/components/layout/MetricCard";
 import { ResponsiveList, ResponsiveListRow } from "@/components/layout/ResponsiveList";
-import { Plus, ArrowRightLeft, TimerReset, BadgeCheck, Loader2 } from "lucide-react";
+import { Plus, ArrowRightLeft, TimerReset, BadgeCheck } from "lucide-react";
+import { MetricValueSkeleton, ResponsiveListSkeleton } from "@/components/ui/skeletons";
 
 const TRANSFER_STATUS_BADGE: Record<string, string> = {
   requested: "bg-amber-500/10 text-amber-600",
@@ -83,7 +84,7 @@ export default function TransfersPage() {
 
       <ResponsiveGrid cols={{ base: 1, md: 3, xl: 3 }}>
         {stats.map((item) => (
-          <MetricCard key={item.title} title={item.title} value={loading ? "—" : item.value} icon={item.icon} />
+          <MetricCard key={item.title} title={item.title} value={loading ? <MetricValueSkeleton /> : item.value} icon={item.icon} />
         ))}
       </ResponsiveGrid>
 
@@ -93,9 +94,7 @@ export default function TransfersPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading transfers...
-            </div>
+            <ResponsiveListSkeleton rows={4} detailCols={2} />
           ) : transfers.length === 0 ? (
             <p className="py-8 text-sm text-muted-foreground">No asset transfers have been recorded yet.</p>
           ) : (

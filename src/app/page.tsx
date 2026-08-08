@@ -26,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import { DownloadAppButton } from "@/components/download-app-button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
@@ -36,12 +37,25 @@ const navLinks = [
   { href: "#contact", label: "Contact" },
 ];
 
-const stats = [
-  { label: "Assets Registered", value: 25000, suffix: "+" },
-  { label: "Government Facilities", value: 1500, suffix: "+" },
-  { label: "Departments", value: 300, suffix: "+" },
-  { label: "Maintenance Records", value: 80000, suffix: "+" },
-];
+interface PlatformStats {
+  assetsCount: number;
+  totalAssetValue: number;
+  organizationsCount: number;
+  usersCount: number;
+  requestsCount: number;
+  pendingRequestsCount: number;
+  inspectionsCount: number;
+}
+
+function formatNaira(value: number): string {
+  if (value <= 0) return "₦0";
+  const abbreviate = (n: number, divisor: number, suffix: string) =>
+    `₦${(n / divisor).toLocaleString(undefined, { maximumFractionDigits: 1 })}${suffix}`;
+  if (value >= 1_000_000_000) return abbreviate(value, 1_000_000_000, "B");
+  if (value >= 1_000_000) return abbreviate(value, 1_000_000, "M");
+  if (value >= 1_000) return abbreviate(value, 1_000, "K");
+  return `₦${value.toLocaleString()}`;
+}
 
 const features = [
   {
@@ -128,10 +142,42 @@ export default function Home() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [stats, setStats] = useState<PlatformStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadStats = async () => {
+      try {
+        const response = await fetch("/api/public/stats");
+        const json = await response.json();
+        if (!cancelled && response.ok && json?.stats) {
+          setStats(json.stats as PlatformStats);
+        }
+      } catch (err) {
+        console.error("Failed to load platform stats", err);
+      } finally {
+        if (!cancelled) setStatsLoading(false);
+      }
+    };
+
+    loadStats();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const summaryStats = [
+    { label: "Assets Registered", value: stats?.assetsCount ?? 0, suffix: "+" },
+    { label: "MDAs Onboarded", value: stats?.organizationsCount ?? 0, suffix: "+" },
+    { label: "Platform Users", value: stats?.usersCount ?? 0, suffix: "+" },
+    { label: "Inspections Logged", value: stats?.inspectionsCount ?? 0, suffix: "+" },
+  ];
 
   // Prevent the page from scrolling behind the open mobile menu — without
   // this, a tall nav list on a short viewport lets the backdrop's content
@@ -329,20 +375,36 @@ export default function Home() {
 
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Total Assets</p>
-                    <p className="mt-2 text-2xl font-semibold">₦12.8B</p>
+                    <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Total Asset Value</p>
+                    {statsLoading ? (
+                      <Skeleton className="mt-2 h-7 w-20 bg-white/10" />
+                    ) : (
+                      <p className="mt-2 text-2xl font-semibold">{formatNaira(stats?.totalAssetValue ?? 0)}</p>
+                    )}
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Government Buildings</p>
-                    <p className="mt-2 text-2xl font-semibold">1,284</p>
+                    <p className="text-xs uppercase tracking-[0.25em] text-slate-400">MDAs Onboarded</p>
+                    {statsLoading ? (
+                      <Skeleton className="mt-2 h-7 w-20 bg-white/10" />
+                    ) : (
+                      <p className="mt-2 text-2xl font-semibold">{(stats?.organizationsCount ?? 0).toLocaleString()}</p>
+                    )}
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Maintenance Requests</p>
-                    <p className="mt-2 text-2xl font-semibold">145</p>
+                    <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Service Requests</p>
+                    {statsLoading ? (
+                      <Skeleton className="mt-2 h-7 w-20 bg-white/10" />
+                    ) : (
+                      <p className="mt-2 text-2xl font-semibold">{(stats?.requestsCount ?? 0).toLocaleString()}</p>
+                    )}
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Online Users</p>
-                    <p className="mt-2 text-2xl font-semibold">42</p>
+                    <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Registered Users</p>
+                    {statsLoading ? (
+                      <Skeleton className="mt-2 h-7 w-20 bg-white/10" />
+                    ) : (
+                      <p className="mt-2 text-2xl font-semibold">{(stats?.usersCount ?? 0).toLocaleString()}</p>
+                    )}
                   </div>
                 </div>
 
@@ -361,12 +423,20 @@ export default function Home() {
                     </div>
                     <div className="min-w-0 space-y-2">
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                        <p className="text-sm text-slate-200">Inspections due</p>
-                        <p className="mt-1 text-xl font-semibold">24</p>
+                        <p className="text-sm text-slate-200">Inspections logged</p>
+                        {statsLoading ? (
+                          <Skeleton className="mt-1 h-6 w-12 bg-white/10" />
+                        ) : (
+                          <p className="mt-1 text-xl font-semibold">{(stats?.inspectionsCount ?? 0).toLocaleString()}</p>
+                        )}
                       </div>
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                         <p className="text-sm text-slate-200">Pending approvals</p>
-                        <p className="mt-1 text-xl font-semibold">11</p>
+                        {statsLoading ? (
+                          <Skeleton className="mt-1 h-6 w-12 bg-white/10" />
+                        ) : (
+                          <p className="mt-1 text-xl font-semibold">{(stats?.pendingRequestsCount ?? 0).toLocaleString()}</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -395,9 +465,13 @@ export default function Home() {
 
         <section className="mt-16">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {stats.map((stat) => (
+            {summaryStats.map((stat) => (
               <motion.div key={stat.label} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.25 }} className="rounded-[24px] border border-border bg-card/70 p-6 shadow-sm backdrop-blur">
-                <AnimatedCounter value={stat.value} suffix={stat.suffix} />
+                {statsLoading ? (
+                  <Skeleton className="h-9 w-24" />
+                ) : (
+                  <AnimatedCounter value={stat.value} suffix={stat.suffix} />
+                )}
                 <p className="mt-2 text-sm text-muted-foreground">{stat.label}</p>
               </motion.div>
             ))}
@@ -493,8 +567,12 @@ export default function Home() {
               </div>
               <div className="min-w-0 space-y-3">
                 <div className="rounded-[20px] border border-white/10 bg-white/5 p-4">
-                  <p className="text-sm text-slate-300">Departments</p>
-                  <p className="mt-2 text-3xl font-semibold">300+</p>
+                  <p className="text-sm text-slate-300">MDAs Onboarded</p>
+                  {statsLoading ? (
+                    <Skeleton className="mt-2 h-9 w-16 bg-white/10" />
+                  ) : (
+                    <p className="mt-2 text-3xl font-semibold">{(stats?.organizationsCount ?? 0).toLocaleString()}+</p>
+                  )}
                 </div>
                 <div className="rounded-[20px] border border-white/10 bg-white/5 p-4">
                   <p className="text-sm text-slate-300">Service coverage</p>

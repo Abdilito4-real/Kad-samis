@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowLeft, CheckCircle2, Download, FileSpreadsheet, Loader2, Upload, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Download, FileSpreadsheet, Upload, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -247,16 +247,12 @@ export default function ImportAssetsPage() {
                 <Button
                   type="button"
                   onClick={handleImport}
-                  disabled={importing || validRows.length === 0}
+                  disabled={validRows.length === 0}
+                  isLoading={importing}
+                  loadingText="Importing..."
                   className="gap-2 rounded-3xl px-6 py-3"
                 >
-                  {importing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" /> Importing...
-                    </>
-                  ) : (
-                    <>Import {validRows.length} asset{validRows.length === 1 ? "" : "s"}</>
-                  )}
+                  Import {validRows.length} asset{validRows.length === 1 ? "" : "s"}
                 </Button>
               </div>
             </div>

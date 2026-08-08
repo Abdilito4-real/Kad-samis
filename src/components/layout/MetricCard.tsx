@@ -16,7 +16,8 @@ const TONE_STYLES: Record<Tone, { chip: string; icon: string }> = {
 
 export interface MetricCardProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string;
-  value: string | number;
+  /** Accepts a skeleton element in place of the real value while loading. */
+  value: React.ReactNode;
   icon?: LucideIcon;
   tone?: Tone;
   /** Small supporting line under the value, e.g. "12 pending review". */

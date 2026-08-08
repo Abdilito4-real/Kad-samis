@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { ResponsiveGrid } from "@/components/layout/ResponsiveGrid";
 import { MetricCard } from "@/components/layout/MetricCard";
 import { ResponsiveList, ResponsiveListRow } from "@/components/layout/ResponsiveList";
-import { Plus, ClipboardCheck, CalendarClock, MapPin, Loader2 } from "lucide-react";
+import { Plus, ClipboardCheck, CalendarClock, MapPin } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { MetricValueSkeleton, ResponsiveListSkeleton } from "@/components/ui/skeletons";
 
 interface Inspection {
   id: string;
@@ -85,7 +86,7 @@ export default function InspectionsPage() {
 
       <ResponsiveGrid cols={{ base: 1, md: 3, xl: 3 }}>
         {stats.map((item) => (
-          <MetricCard key={item.title} title={item.title} value={loading ? "—" : item.value} icon={item.icon} />
+          <MetricCard key={item.title} title={item.title} value={loading ? <MetricValueSkeleton /> : item.value} icon={item.icon} />
         ))}
       </ResponsiveGrid>
 
@@ -95,9 +96,7 @@ export default function InspectionsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading inspections...
-            </div>
+            <ResponsiveListSkeleton rows={4} detailCols={2} />
           ) : inspections.length === 0 ? (
             <p className="py-8 text-sm text-muted-foreground">No inspections have been recorded yet.</p>
           ) : (
