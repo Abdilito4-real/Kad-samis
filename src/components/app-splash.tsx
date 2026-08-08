@@ -9,8 +9,10 @@ const SESSION_KEY = "kadsamis-splash-shown";
 // A splash that vanishes the instant auth resolves reads as a flicker, not
 // a launch screen — Instagram/Facebook hold theirs for a beat even on a
 // warm cache. This is that floor, not a fixed delay: it races against
-// `useAuth().loading` and whichever finishes last wins.
-const MIN_VISIBLE_MS = 900;
+// `useAuth().loading` and whichever finishes last wins. Held for a full
+// 5s per product direction, long enough to read as a deliberate launch
+// screen rather than a flash.
+const MIN_VISIBLE_MS = 5000;
 
 function isStandaloneDisplay(): boolean {
   if (typeof window === "undefined") return false;
@@ -78,12 +80,15 @@ export function AppSplash() {
               <span className="absolute inset-0 rounded-full border border-emerald-400/30 animate-splash-pulse [animation-delay:0.6s]" />
               <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-[22px] border border-white/15 bg-white/5 shadow-[0_8px_40px_rgba(16,185,129,0.25)] backdrop-blur">
                 <Image
-                  src="/images/auth/kaduna-state.png"
+                  // The app's own icon (public/icon-512.png — same mark used
+                  // for the PWA home-screen icon), not the Kaduna State
+                  // government seal used on the login/landing brand panels.
+                  src="/icon-512.png"
                   alt="Kadsamis"
                   width={80}
                   height={80}
                   priority
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-contain"
                 />
               </div>
             </div>
