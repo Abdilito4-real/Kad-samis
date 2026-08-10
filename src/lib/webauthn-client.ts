@@ -69,6 +69,19 @@ export async function supportsBiometricSignIn(): Promise<boolean> {
   }
 }
 
+/** UA-based, not viewport-width-based — a narrow desktop window has no
+ * fingerprint sensor to auto-prompt regardless of how the layout responds,
+ * so gating the auto-biometric login flow on screen size alone would just
+ * pop a dialog that's guaranteed to fail. Same iPadOS caveat as the rest of
+ * this codebase's device sniffing (src/hooks/use-install-prompt.ts): iPadOS
+ * Safari's UA impersonates desktop macOS by default, so an iPad won't match
+ * here even though it has Touch ID/Face ID — acceptable for now since the
+ * ask was specifically phones. */
+export function isMobileDevice(): boolean {
+  if (typeof window === "undefined") return false;
+  return /android|iphone|ipad|ipod/i.test(window.navigator.userAgent);
+}
+
 async function authedFetch(url: string, accessToken: string, init?: RequestInit) {
   const response = await fetch(url, {
     ...init,
