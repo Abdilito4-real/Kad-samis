@@ -170,8 +170,11 @@ export async function signInWithPasskey(supabase: SupabaseClient): Promise<Sessi
     throw new Error(verifyJson?.error || "Passkey sign-in failed");
   }
 
+  // Supabase's verifyOtp is strict about this: the token_hash form and the
+  // raw-6-digit-code form are mutually exclusive, and passing `email`
+  // alongside `token_hash` throws "Only the token_hash and type should be
+  // provided" instead of signing in.
   const { data, error } = await supabase.auth.verifyOtp({
-    email: verifyJson.email,
     token_hash: verifyJson.tokenHash,
     type: "magiclink",
   });
