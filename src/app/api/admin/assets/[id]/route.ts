@@ -2,9 +2,10 @@ import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { createServerSideClient } from '@/lib/supabase/server';
 import { getProfile, getSupabaseFromRequest, writeAudit } from '@/lib/supabase/serverHelpers';
+import { parseGeolocation } from '@/lib/assetImport';
 
 const ASSET_COLUMNS =
-  'id, asset_number, name, category_id, condition, status, make, purchase_year, purchase_value, warranty_years, organization_id, created_at, updated_at';
+  'id, asset_number, name, category_id, condition, status, make, purchase_year, purchase_value, warranty_years, latitude, longitude, organization_id, created_at, updated_at';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -94,6 +95,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (body.purchaseYear !== undefined) payload.purchase_year = body.purchaseYear ? Number(body.purchaseYear) : null;
     if (body.purchaseValue !== undefined) payload.purchase_value = body.purchaseValue ? Number(body.purchaseValue) : null;
     if (body.warrantyYears !== undefined) payload.warranty_years = body.warrantyYears ? Number(body.warrantyYears) : null;
+    if (body.geolocation !== undefined) {
+      const parsedGeo = parseGeolocation(String(body.geolocation ?? ''));
+      if (parsedGeo.error) {
+        return NextResponse.json({ error: parsedGeo.error }, { status: 400 });
+      }
+      payload.latitude = parsedGeo.latitude;
+      payload.longitude = parsedGeo.longitude;
+    }
 
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const serviceRoleClient = serviceRoleKey && process.env.NEXT_PUBLIC_SUPABASE_URL

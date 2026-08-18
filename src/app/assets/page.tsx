@@ -14,7 +14,7 @@ import { ListRowSkeleton, MetricValueSkeleton } from "@/components/ui/skeletons"
 import { Upload, Download, Package2, ShieldCheck, Wrench, ArrowRightLeft } from "lucide-react";
 import { RequestAssetDialog } from "@/components/requests/RequestAssetDialog";
 import { toCSV, downloadCSV } from "@/lib/csv";
-import { ASSET_CSV_HEADERS } from "@/lib/assetImport";
+import { ASSET_CSV_HEADERS, formatGeolocation } from "@/lib/assetImport";
 import { toast } from "sonner";
 
 const STATUS_BADGE: Record<string, string> = {
@@ -144,6 +144,7 @@ export default function AssetsPage() {
         asset.warranty_years ?? "",
         asset.status ?? "",
         asset.asset_categories?.[0]?.name ?? "",
+        formatGeolocation(asset.latitude, asset.longitude),
       ]),
     ];
 

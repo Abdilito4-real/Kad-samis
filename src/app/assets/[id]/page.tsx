@@ -18,6 +18,8 @@ interface Asset {
   purchase_year: number | null;
   purchase_value: number | null;
   warranty_years: number | null;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export default function AssetDetailPage({ params }: { params: Promise<{ id: string }> }) {
