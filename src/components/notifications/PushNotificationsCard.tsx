@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, BellPlus, BellOff } from "lucide-react";
+import { BellPlus, BellOff } from "lucide-react";
 import { isPushSupported, getCurrentPushSubscription, subscribeToPush, unsubscribeFromPush } from "@/lib/push";
 
 /**
@@ -62,17 +62,12 @@ export function PushNotificationsCard() {
         </div>
         <Button
           onClick={handleToggle}
-          disabled={pushBusy || !pushChecked}
+          disabled={!pushChecked}
+          isLoading={pushBusy}
           variant={pushEnabled ? "outline" : "default"}
           className="gap-2 shrink-0"
         >
-          {pushBusy ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : pushEnabled ? (
-            <BellOff className="h-4 w-4" />
-          ) : (
-            <BellPlus className="h-4 w-4" />
-          )}
+          {pushEnabled ? <BellOff className="h-4 w-4" /> : <BellPlus className="h-4 w-4" />}
           {pushEnabled ? "Turn off" : "Enable push notifications"}
         </Button>
       </CardContent>

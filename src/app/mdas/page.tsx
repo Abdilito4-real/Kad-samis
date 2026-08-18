@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { useAuth } from '@/components/auth-provider';
 import { createClient } from '@/lib/supabase/client';
+import { cn } from '@/lib/utils';
 
 type Org = {
   id: string;
@@ -251,22 +252,23 @@ export default function MdasPage() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <button
                   onClick={refreshList}
-                  className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+                  disabled={loading}
+                  className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-60"
                 >
-                  <RefreshCcw className="h-4 w-4" />
-                  Refresh
+                  <RefreshCcw className={cn("h-4 w-4", loading && "animate-spin")} />
+                  {loading ? "Refreshing…" : "Refresh"}
                 </button>
               </div>
             </div>
           </section>
 
           <ResponsiveGrid cols={{ base: 1, md: 2, xl: 6 }}>
-            <StatsCard title="Total Organizations" value={orgs.length} icon={<LayoutDashboard className="h-6 w-6" />} tone="neutral" />
-            <StatsCard title="Ministries" value={(grouped['MINISTRY'] || []).length} icon={<Building2 className="h-6 w-6" />} tone="emerald" />
-            <StatsCard title="Departments" value={(grouped['DEPARTMENT'] || []).length} icon={<LayoutDashboard className="h-6 w-6" />} tone="sky" />
-            <StatsCard title="Agencies" value={(grouped['AGENCY'] || []).length} icon={<Globe2 className="h-6 w-6" />} tone="amber" />
-            <StatsCard title="Administrators" value={orgs.reduce((sum, org) => sum + (org.profiles?.length || 0), 0)} icon={<Users className="h-6 w-6" />} tone="violet" />
-            <StatsCard title="Pending Requests" value={pendingRequests} icon={<Mail className="h-6 w-6" />} tone="rose" />
+            <StatsCard title="Total Organizations" value={orgs.length} icon={<LayoutDashboard className="h-6 w-6" />} tone="neutral" loading={loading} />
+            <StatsCard title="Ministries" value={(grouped['MINISTRY'] || []).length} icon={<Building2 className="h-6 w-6" />} tone="emerald" loading={loading} />
+            <StatsCard title="Departments" value={(grouped['DEPARTMENT'] || []).length} icon={<LayoutDashboard className="h-6 w-6" />} tone="sky" loading={loading} />
+            <StatsCard title="Agencies" value={(grouped['AGENCY'] || []).length} icon={<Globe2 className="h-6 w-6" />} tone="amber" loading={loading} />
+            <StatsCard title="Administrators" value={orgs.reduce((sum, org) => sum + (org.profiles?.length || 0), 0)} icon={<Users className="h-6 w-6" />} tone="violet" loading={loading} />
+            <StatsCard title="Pending Requests" value={pendingRequests} icon={<Mail className="h-6 w-6" />} tone="rose" loading={loading} />
           </ResponsiveGrid>
 
           {/* Toolbar: search, filters, and actions each get their own row so the

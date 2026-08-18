@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Send, Wrench } from "lucide-react";
+import { Send, Wrench } from "lucide-react";
 
 interface PresetAsset {
   id: string;
@@ -198,19 +198,13 @@ export function RequestSubmissionForm({ onSuccess, presetAsset }: RequestSubmiss
       <Button
         type="submit"
         className="w-full bg-emerald-600 hover:bg-emerald-700"
-        disabled={loading}
+        isLoading={loading}
+        loadingText="Submitting…"
       >
-        {loading ? (
-          <span className="flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Submitting…
-          </span>
-        ) : (
-          <span className="flex items-center gap-2">
-            <Send className="h-4 w-4" />
-            Submit Request
-          </span>
-        )}
+        <span className="flex items-center gap-2">
+          <Send className="h-4 w-4" />
+          Submit Request
+        </span>
       </Button>
     </form>
   );

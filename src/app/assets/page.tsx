@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ResponsiveGrid } from "@/components/layout/ResponsiveGrid";
 import { MetricCard } from "@/components/layout/MetricCard";
+import { ListRowSkeleton, MetricValueSkeleton } from "@/components/ui/skeletons";
 import { Upload, Download, Package2, ShieldCheck, Wrench, ArrowRightLeft } from "lucide-react";
 import { RequestAssetDialog } from "@/components/requests/RequestAssetDialog";
 import { toCSV, downloadCSV } from "@/lib/csv";
@@ -158,20 +159,15 @@ export default function AssetsPage() {
 
   return (
     <div className="space-y-6">
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
-        </div>
-      ) : null}
-
-      {error && !loading ? (
+      {error ? (
         <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-sm text-rose-500">
           <strong>⚠️ {error.includes("Redirecting") ? "Notice" : "Error"}:</strong> {error}
         </div>
-      ) : null}
-
-      {!loading && !error ? (
+      ) : (
         <>
+          {/* The page's own template — title, actions, column headers —
+              renders immediately and stays put; only the numbers and rows
+              below swap from skeletons to real data once `loading` clears. */}
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Asset Registry</h1>
@@ -186,7 +182,7 @@ export default function AssetsPage() {
                   </Link>
                 </Button>
               )}
-              <Button variant="outline" size="sm" onClick={handleExport}>
+              <Button variant="outline" size="sm" onClick={handleExport} disabled={loading}>
                 <Download className="mr-2 h-4 w-4" />
                 Export
               </Button>
@@ -200,7 +196,13 @@ export default function AssetsPage() {
               { title: "Maintenance", value: assetItems.filter((item) => item.status === "maintenance").length, icon: Wrench, tone: "amber" as const },
               { title: "Recently added", value: assetItems.slice(0, 5).length, icon: ArrowRightLeft, tone: "sky" as const },
             ].map((item) => (
-              <MetricCard key={item.title} title={item.title} value={item.value} icon={item.icon} tone={item.tone} />
+              <MetricCard
+                key={item.title}
+                title={item.title}
+                value={loading ? <MetricValueSkeleton /> : item.value}
+                icon={item.icon}
+                tone={item.tone}
+              />
             ))}
           </ResponsiveGrid>
 
@@ -217,7 +219,9 @@ export default function AssetsPage() {
                   <span>Condition</span>
                   <span className="text-right">Actions</span>
                 </div>
-                {assetItems.length === 0 ? (
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, index) => <ListRowSkeleton key={index} />)
+                ) : assetItems.length === 0 ? (
                   <div className="px-4 py-6 text-sm text-muted-foreground">No assets have been registered yet.</div>
                 ) : (
                   assetItems.map((asset) => (
@@ -282,7 +286,7 @@ export default function AssetsPage() {
             </CardContent>
           </Card>
         </>
-      ) : null}
+      )}
     </div>
   );
 }

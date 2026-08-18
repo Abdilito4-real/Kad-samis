@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ResponsiveGrid } from "@/components/layout/ResponsiveGrid";
 import { MetricCard } from "@/components/layout/MetricCard";
+import { MetricCardSkeleton, ListRowSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/components/auth-provider";
 import { createClient } from "@/lib/supabase/client";
 import { displayIdentity } from "@/lib/displayIdentity";
@@ -443,7 +444,13 @@ export default function DashboardPage() {
         </div>
       </motion.div>
 
-      {statsToRender.length > 0 ? (
+      {isLoadingDashboard ? (
+        <ResponsiveGrid cols={{ base: 1, md: 2, xl: 4 }}>
+          {Array.from({ length: 4 }).map((_, index) => (
+            <MetricCardSkeleton key={index} />
+          ))}
+        </ResponsiveGrid>
+      ) : statsToRender.length > 0 ? (
         <motion.div initial="hidden" animate="show">
           <ResponsiveGrid cols={{ base: 1, md: 2, xl: 4 }}>
             {statsToRender.map((stat, index) => {
@@ -497,7 +504,13 @@ export default function DashboardPage() {
               </Link>
             </CardHeader>
             <CardContent>
-              {superAdminOrgMetrics.length > 0 ? (
+              {loadingSuperAdminData ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <ListRowSkeleton key={index} withAvatar />
+                  ))}
+                </div>
+              ) : superAdminOrgMetrics.length > 0 ? (
                 <div className="max-h-[24rem] overflow-y-auto pr-1">
                   <div className="hidden items-center gap-x-4 px-3 pb-2 text-xs font-medium text-muted-foreground sm:grid sm:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto]">
                     <span>Organization</span>
@@ -572,7 +585,13 @@ export default function DashboardPage() {
               </Link>
             </CardHeader>
             <CardContent>
-              {superAdminPendingApprovals.length > 0 ? (
+              {loadingSuperAdminData ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <ListRowSkeleton key={index} withAvatar />
+                  ))}
+                </div>
+              ) : superAdminPendingApprovals.length > 0 ? (
                 <div className="space-y-3">
                   {superAdminPendingApprovals.slice(0, 5).map((request: any) => {
                     const RequestIcon = requestIconFor(request.type);
@@ -617,7 +636,13 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {requestItems.length > 0 ? (
+            {loadingSummary ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <ListRowSkeleton key={index} />
+                ))}
+              </div>
+            ) : requestItems.length > 0 ? (
               <div className="space-y-3">
                 {requestItems.map((request) => (
                   <div key={request.id} className="min-w-0 rounded-2xl border border-border bg-background/70 px-3 py-3 sm:flex sm:items-start sm:justify-between sm:gap-3">
@@ -647,7 +672,13 @@ export default function DashboardPage() {
             <CardTitle>Asset snapshot</CardTitle>
           </CardHeader>
           <CardContent>
-            {assetItems.length > 0 ? (
+            {loadingSummary ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <ListRowSkeleton key={index} />
+                ))}
+              </div>
+            ) : assetItems.length > 0 ? (
               <div className="space-y-3">
                 {assetItems.map((asset) => (
                   <div key={asset.id} className="min-w-0 rounded-2xl border border-border bg-background/70 p-3 text-sm">

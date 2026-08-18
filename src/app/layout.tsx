@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/components/auth-provider";
 import { AppToaster } from "@/components/app-toaster";
+import { AppSplash } from "@/components/app-splash";
 import "./globals.css";
 
 // Self-hosted at build time instead of the old `@import url(fonts.googleapis.com/...)`
@@ -53,6 +54,7 @@ export default function RootLayout({
             wins over defaultTheme on later visits. */}
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <AuthProvider>
+            <AppSplash />
             {children}
             <AppToaster />
           </AuthProvider>

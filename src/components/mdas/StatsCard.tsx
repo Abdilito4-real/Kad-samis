@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type Tone = 'neutral' | 'emerald' | 'sky' | 'amber' | 'violet' | 'rose';
 
@@ -19,11 +20,15 @@ export default function StatsCard({
   value,
   icon,
   tone = 'neutral',
+  loading = false,
 }: {
   title: string;
   value: number | string;
   icon?: React.ReactNode;
   tone?: Tone;
+  /** Shows a skeleton bar in place of the value while the count is still
+   * being fetched, instead of flashing "0" before the real number lands. */
+  loading?: boolean;
 }) {
   const [count, setCount] = useState(0);
   const styles = toneStyles[tone];
@@ -61,7 +66,7 @@ export default function StatsCard({
             {title}
           </div>
           <div className="mt-1.5 text-2xl font-semibold tabular-nums text-foreground">
-            {typeof value === 'number' ? count : value}
+            {loading ? <Skeleton className="h-7 w-12" /> : typeof value === 'number' ? count : value}
           </div>
         </div>
         {icon && (

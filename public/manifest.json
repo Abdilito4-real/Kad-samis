@@ -8,8 +8,8 @@
   "display": "standalone",
   "lang": "en",
   "dir": "ltr",
-  "background_color": "#ffffff",
-  "theme_color": "#0f172a",
+  "background_color": "#06120e",
+  "theme_color": "#06120e",
   "categories": ["business", "productivity"],
   "screenshots": [],
   "icons": [

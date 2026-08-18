@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ export function AssetEdit({ asset }: AssetEditProps) {
   const router = useRouter();
   const { user } = useAuth();
   const canRequest = Boolean(user?.organizationId);
+  const [deleting, setDeleting] = useState(false);
   const initialValues: AssetFormValues = {
     assetNumber: asset.asset_number,
     name: asset.name,
@@ -71,26 +73,31 @@ export function AssetEdit({ asset }: AssetEditProps) {
       return;
     }
 
-    const supabase = createClient();
-    const { data: { session } } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
-    if (!session?.access_token) {
-      toast.error("Please sign in to delete this asset");
-      return;
+    setDeleting(true);
+    try {
+      const supabase = createClient();
+      const { data: { session } } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
+      if (!session?.access_token) {
+        toast.error("Please sign in to delete this asset");
+        return;
+      }
+
+      const response = await fetch(`/api/admin/assets/${asset.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      const json = await response.json();
+      if (!response.ok) {
+        toast.error(json?.error || "Unable to delete asset");
+        return;
+      }
+
+      toast.success("Asset deleted successfully");
+      router.push("/assets");
+    } finally {
+      setDeleting(false);
     }
-
-    const response = await fetch(`/api/admin/assets/${asset.id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${session.access_token}` },
-    });
-
-    const json = await response.json();
-    if (!response.ok) {
-      toast.error(json?.error || "Unable to delete asset");
-      return;
-    }
-
-    toast.success("Asset deleted successfully");
-    router.push("/assets");
   };
 
   return (
@@ -106,7 +113,13 @@ export function AssetEdit({ asset }: AssetEditProps) {
               {canRequest && (
                 <RequestAssetDialog assetId={asset.id} assetName={asset.name} assetNumber={asset.asset_number} />
               )}
-              <Button variant="destructive" onClick={handleDelete} className="rounded-3xl px-5 py-3">
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+                isLoading={deleting}
+                loadingText="Deleting…"
+                className="rounded-3xl px-5 py-3"
+              >
                 Delete asset
               </Button>
             </div>

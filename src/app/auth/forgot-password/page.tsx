@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { AlertCircle, CheckCircle2, Clock, KeyRound, Loader2, Mail } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, KeyRound, Mail } from "lucide-react";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -145,17 +145,14 @@ export default function ForgotPasswordPage() {
           <Button
             type="submit"
             className="w-full"
-            disabled={loading || cooldownSeconds > 0}
+            disabled={cooldownSeconds > 0}
+            isLoading={loading}
+            loadingText="Sending link…"
           >
             {cooldownSeconds > 0 ? (
               <span className="flex items-center justify-center gap-2">
                 <Clock className="h-4 w-4" />
                 Wait {cooldownSeconds}s to retry
-              </span>
-            ) : loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Sending link…
               </span>
             ) : (
               "Send reset link"

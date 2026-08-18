@@ -22,6 +22,7 @@ import {
   Bell,
   CalendarDays,
   Command,
+  Loader2,
   LogOut,
   Menu,
   Moon,
@@ -47,6 +48,7 @@ export function DashboardHeader({ onOpenCommandPalette, onOpenMobileMenu }: Dash
   const isSuperAdmin = user?.roleId === "super_admin";
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   // Real-time unread count (and the "new request"/"new assignment" etc. toast
   // that goes with it) — see useUnreadNotifications for the realtime wiring.
   const unreadNotificationCount = useUnreadNotifications();
@@ -71,8 +73,14 @@ export function DashboardHeader({ onOpenCommandPalette, onOpenMobileMenu }: Dash
   }, [pathname]);
 
   const handleSignOut = async () => {
-    await signOut();
-    router.replace("/auth/login");
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await signOut();
+      router.replace("/auth/login");
+    } finally {
+      setSigningOut(false);
+    }
   };
 
   const orgId = searchParams.get("orgId");
@@ -204,9 +212,18 @@ export function DashboardHeader({ onOpenCommandPalette, onOpenMobileMenu }: Dash
                 {mounted && theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut}>
-                <LogOut className="h-4 w-4" />
-                Sign Out
+              <DropdownMenuItem
+                onSelect={(event) => {
+                  // Keep the menu open while the sign-out request is in
+                  // flight so the spinner/disabled state stays visible
+                  // instead of vanishing with the closed menu.
+                  event.preventDefault();
+                  handleSignOut();
+                }}
+                disabled={signingOut}
+              >
+                {signingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+                {signingOut ? "Signing out…" : "Sign Out"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

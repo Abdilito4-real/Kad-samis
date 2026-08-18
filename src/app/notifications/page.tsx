@@ -1,14 +1,34 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BellRing, AlertTriangle, CheckCircle2, Info, Loader2 } from "lucide-react";
+import { BellRing, AlertTriangle, CheckCircle2, Info, Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/auth-provider";
 import { PushNotificationsCard } from "@/components/notifications/PushNotificationsCard";
 import { ResponsiveList } from "@/components/layout/ResponsiveList";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+
+const NOTIFICATION_ICONS: Record<string, ReactNode> = {
+  approval: <CheckCircle2 className="h-4 w-4" />,
+  request: <AlertTriangle className="h-4 w-4" />,
+  security: <ShieldCheck className="h-4 w-4" />,
+};
+
+function NotificationRowSkeleton() {
+  return (
+    <div className="flex min-h-12 items-start gap-3 rounded-2xl border border-border bg-background/70 p-4">
+      <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+      <div className="min-w-0 flex-1 space-y-2">
+        <Skeleton className="h-4 w-1/2" />
+        <Skeleton className="h-3 w-3/4" />
+        <Skeleton className="h-2.5 w-20" />
+      </div>
+    </div>
+  );
+}
 
 interface Notification {
   id: string;
@@ -25,6 +45,9 @@ export default function NotificationsPage() {
   const [items, setItems] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasLoadedNotifications, setHasLoadedNotifications] = useState(false);
+  // Tracks the one notification currently being marked read, so only that
+  // row shows a busy state instead of blocking the whole list.
+  const [markingId, setMarkingId] = useState<string | null>(null);
   const sessionKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -80,18 +103,23 @@ export default function NotificationsPage() {
   const unreadCount = items.filter((item) => !item.read).length;
 
   const markAsRead = async (id: string) => {
-    const supabase = createClient();
-    const { data: { session } } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
+    setMarkingId(id);
+    try {
+      const supabase = createClient();
+      const { data: { session } } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
 
-    await fetch("/api/notifications", {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
-      },
-      body: JSON.stringify({ id }),
-    });
-    setItems((current) => current.map((item) => (item.id === id ? { ...item, read: true } : item)));
+      await fetch("/api/notifications", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ id }),
+      });
+      setItems((current) => current.map((item) => (item.id === id ? { ...item, read: true } : item)));
+    } finally {
+      setMarkingId(null);
+    }
   };
 
   return (
@@ -113,23 +141,35 @@ export default function NotificationsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading notifications...</div>
+            <ResponsiveList>
+              {Array.from({ length: 4 }).map((_, index) => (
+                <NotificationRowSkeleton key={index} />
+              ))}
+            </ResponsiveList>
           ) : items.length === 0 ? (
             <p className="py-8 text-sm text-muted-foreground">No notifications yet.</p>
           ) : <ResponsiveList>
-            {items.map((item) => (
+            {items.map((item) => {
+              const isMarking = markingId === item.id;
+              return (
               <button
                 type="button"
                 key={item.id}
-                onClick={() => markAsRead(item.id)}
+                onClick={() => !item.read && markAsRead(item.id)}
+                disabled={isMarking}
+                aria-busy={isMarking || undefined}
                 className={cn(
-                  "flex min-h-12 w-full items-start gap-3 rounded-2xl border p-4 text-left transition hover:bg-muted/50",
+                  "flex min-h-12 w-full items-start gap-3 rounded-2xl border p-4 text-left transition hover:bg-muted/50 disabled:pointer-events-none disabled:opacity-70",
                   item.read ? "border-border bg-background/70" : "border-emerald-500/30 bg-emerald-500/5"
                 )}
               >
                 <div className="relative mt-0.5 rounded-full bg-primary/10 p-2 text-primary">
-                  {item.type === "approval" ? <CheckCircle2 className="h-4 w-4" /> : item.type === "request" ? <AlertTriangle className="h-4 w-4" /> : <Info className="h-4 w-4" />}
-                  {!item.read && (
+                  {isMarking ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    NOTIFICATION_ICONS[item.type] ?? <Info className="h-4 w-4" />
+                  )}
+                  {!item.read && !isMarking && (
                     <span
                       className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-background"
                       aria-label="Unread"
@@ -142,7 +182,8 @@ export default function NotificationsPage() {
                   <time className="mt-1 block text-xs text-muted-foreground" dateTime={item.created_at}>{new Date(item.created_at).toLocaleString()}</time>
                 </div>
               </button>
-            ))}
+              );
+            })}
           </ResponsiveList>}
         </CardContent>
       </Card>

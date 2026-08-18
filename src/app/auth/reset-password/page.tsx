@@ -287,16 +287,11 @@ export default function ResetPasswordPage() {
           <Button
             type="submit"
             className="w-full"
-            disabled={loading || !password || !confirmPassword}
+            disabled={!password || !confirmPassword}
+            isLoading={loading}
+            loadingText="Updating password…"
           >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Updating password…
-              </span>
-            ) : (
-              "Update password"
-            )}
+            Update password
           </Button>
         </form>
       </motion.div>
