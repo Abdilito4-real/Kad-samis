@@ -8,6 +8,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
 import { createClient } from "@/lib/supabase/client";
 import { logSignIn } from "@/lib/logSignIn";
+import { setKeepSignedIn } from "@/lib/sessionPersistence";
+import { clearLoginAttempts, getLockoutStatus, recordFailedAttempt } from "@/lib/loginAttempts";
 import {
   hasEnrolledPasskeyOnThisDevice,
   isMobileDevice,
@@ -18,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import {
   AlertCircle,
   CheckCircle2,
+  Clock,
   Eye,
   EyeOff,
   Fingerprint,
@@ -38,9 +41,17 @@ export default function LoginPageContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  // Defaults to true so a user who never touches the checkbox gets this
+  // app's original always-persist behavior.
+  const [keepSignedIn, setKeepSignedInState] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  // Password-attempt lockout — see src/lib/loginAttempts.ts. Re-checked
+  // whenever the email field changes so switching accounts doesn't inherit
+  // a different email's cooldown.
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null);
+  const [lockoutSecondsLeft, setLockoutSecondsLeft] = useState(0);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(false);
   // Drives the full-panel "Confirm it's you" takeover on capable mobile
@@ -90,6 +101,10 @@ export default function LoginPageContent() {
     setError(null);
 
     try {
+      // No "keep me signed in" checkbox exists on this path — a biometric
+      // sign-in is inherently the fast-reauth convenience flow, so it
+      // always persists like this app's original behavior did.
+      setKeepSignedIn(true);
       const session = await signInWithPasskey(supabase);
       await completeSignIn(session.access_token, session.user.id, "passkey");
       return true;
@@ -108,23 +123,27 @@ export default function LoginPageContent() {
 
   useEffect(() => {
     setMounted(true);
-    // Gate on both device capability and this device having actually
-    // enrolled a passkey before — showing the button to a first-time
-    // visitor would just lead to an empty account picker with nothing to
-    // pick, since a resident-key passkey only ever lives on the device
-    // that created it.
-    if (!hasEnrolledPasskeyOnThisDevice()) return;
 
     let cancelled = false;
 
+    // Show the manual button whenever this device *can* do platform
+    // biometrics, regardless of whether passkey registration happened in
+    // this exact browser: a discoverable/usernameless WebAuthn prompt
+    // handles "nothing enrolled here" gracefully with its own native "no
+    // passkey available" UI, so gating visibility on the local
+    // hasEnrolledPasskeyOnThisDevice() marker was hiding a working button
+    // whenever the passkey was registered on a different device/browser or
+    // arrived here via a synced passkey provider (iCloud Keychain, Google
+    // Password Manager) rather than local registration.
     supportsBiometricSignIn().then((available) => {
       if (cancelled) return;
       setBiometricAvailable(available);
 
-      // Auto-prompt only on phones with a real platform authenticator —
-      // desktop keeps the manual button (a mouse-and-keyboard user hasn't
-      // signalled "scan me" the way opening the app on a phone has).
-      if (!available || !isMobileDevice() || autoTriedRef.current) return;
+      // The *unprompted auto-fire* on load stays gated on the local
+      // enrollment marker — that's the one place a doomed native prompt
+      // popping unasked on a first-time visitor would actually be
+      // annoying, as opposed to a button they choose to tap themselves.
+      if (!available || !isMobileDevice() || !hasEnrolledPasskeyOnThisDevice() || autoTriedRef.current) return;
       autoTriedRef.current = true;
 
       (async () => {
@@ -157,10 +176,45 @@ export default function LoginPageContent() {
     }
   }, [searchParams]);
 
+  // Re-check this email's lockout status whenever it changes, so switching
+  // accounts in the field doesn't carry over a different email's cooldown.
+  useEffect(() => {
+    setLockedUntil(getLockoutStatus(email).lockedUntil);
+  }, [email]);
+
+  // Ticks the lockout countdown once a second and clears it when it expires.
+  useEffect(() => {
+    if (!lockedUntil) {
+      setLockoutSecondsLeft(0);
+      return;
+    }
+    const tick = () => {
+      const secondsLeft = Math.max(0, Math.ceil((lockedUntil - Date.now()) / 1000));
+      setLockoutSecondsLeft(secondsLeft);
+      if (secondsLeft <= 0) setLockedUntil(null);
+    };
+    tick();
+    const timer = window.setInterval(tick, 1000);
+    return () => window.clearInterval(timer);
+  }, [lockedUntil]);
+
   const handleLogin = async (event: FormEvent) => {
     event.preventDefault();
-    setLoading(true);
     setError(null);
+
+    // Checked fresh (not just from state) in case the countdown effect
+    // hasn't ticked over yet at the exact moment of submit.
+    const status = getLockoutStatus(email);
+    if (status.lockedUntil) {
+      setLockedUntil(status.lockedUntil);
+      const secondsLeft = Math.max(0, Math.ceil((status.lockedUntil - Date.now()) / 1000));
+      const message = `Too many failed attempts. Please wait ${secondsLeft}s before trying again.`;
+      setError(message);
+      toast.error("Too many attempts", { description: message });
+      return;
+    }
+
+    setLoading(true);
 
     if (!supabase) {
       const fallback = "Supabase is not configured. Please check environment variables.";
@@ -173,16 +227,31 @@ export default function LoginPageContent() {
     }
 
     try {
+      setKeepSignedIn(keepSignedIn);
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (signInError) {
-        setError(signInError.message);
-        toast.error("Unable to sign in", {
-          description: signInError.message,
-        });
+        const attempt = recordFailedAttempt(email);
+        setLockedUntil(attempt.lockedUntil);
+
+        if (attempt.lockedUntil) {
+          const secondsLeft = Math.max(0, Math.ceil((attempt.lockedUntil - Date.now()) / 1000));
+          const message = `Too many failed attempts. Please wait ${secondsLeft}s before trying again.`;
+          setError(message);
+          toast.error("Too many attempts", { description: message });
+        } else {
+          const attemptsNote =
+            attempt.attemptsRemaining <= 2
+              ? ` (${attempt.attemptsRemaining} attempt${attempt.attemptsRemaining === 1 ? "" : "s"} left before a temporary lockout)`
+              : "";
+          setError(`${signInError.message}${attemptsNote}`);
+          toast.error("Unable to sign in", {
+            description: `${signInError.message}${attemptsNote}`,
+          });
+        }
       } else if (!data?.session) {
         const fallback = "Unable to establish session. Please try again.";
         setError(fallback);
@@ -193,6 +262,7 @@ export default function LoginPageContent() {
           throw new Error(sessionError?.message || "Session was not created");
         }
 
+        clearLoginAttempts(email);
         await completeSignIn(activeSession.access_token, activeSession.user.id, "password");
       }
     } catch (_error) {
@@ -203,6 +273,8 @@ export default function LoginPageContent() {
       setLoading(false);
     }
   };
+
+  const isLocked = lockedUntil !== null && lockoutSecondsLeft > 0;
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(15,118,110,0.14),_transparent_25%),linear-gradient(135deg,_#f8fafc,_#eef5f8)] transition-colors dark:bg-background dark:bg-none">
@@ -362,7 +434,12 @@ export default function LoginPageContent() {
                       </div>
                     ) : null}
 
-                    {error ? (
+                    {isLocked ? (
+                      <div className="flex items-start gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-3 py-3 text-sm text-amber-600">
+                        <Clock className="mt-0.5 h-4 w-4 shrink-0" />
+                        Too many failed attempts. Try again in {lockoutSecondsLeft}s.
+                      </div>
+                    ) : error ? (
                       <div className="flex items-start gap-2 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-3 py-3 text-sm text-rose-500">
                         <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                         {error}
@@ -378,8 +455,9 @@ export default function LoginPageContent() {
                           value={email}
                           onChange={(event) => setEmail(event.target.value)}
                           placeholder="you@example.com"
-                          className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                          className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-60"
                           required
+                          disabled={isLocked}
                         />
                       </div>
                     </div>
@@ -393,8 +471,9 @@ export default function LoginPageContent() {
                           value={password}
                           onChange={(event) => setPassword(event.target.value)}
                           placeholder="••••••••"
-                          className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                          className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-60"
                           required
+                          disabled={isLocked}
                         />
                         <button
                           type="button"
@@ -409,7 +488,12 @@ export default function LoginPageContent() {
 
                     <div className="flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
                       <label className="flex items-center gap-2">
-                        <input type="checkbox" className="rounded border-input accent-emerald-500" />
+                        <input
+                          type="checkbox"
+                          checked={keepSignedIn}
+                          onChange={(event) => setKeepSignedInState(event.target.checked)}
+                          className="rounded border-input accent-emerald-500"
+                        />
                         Keep me signed in
                       </label>
                       <Link href="/auth/forgot-password" className="font-medium text-primary hover:underline">
@@ -417,8 +501,21 @@ export default function LoginPageContent() {
                       </Link>
                     </div>
 
-                    <Button type="submit" className="w-full" isLoading={loading} loadingText="Signing in…">
-                      Sign in
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      isLoading={loading}
+                      loadingText="Signing in…"
+                      disabled={isLocked}
+                    >
+                      {isLocked ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <Clock className="h-4 w-4" />
+                          Try again in {lockoutSecondsLeft}s
+                        </span>
+                      ) : (
+                        "Sign in"
+                      )}
                     </Button>
                   </form>
                 </>
