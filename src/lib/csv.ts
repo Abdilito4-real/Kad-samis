@@ -74,7 +74,18 @@ export function parseCSVWithHeader(text: string): Record<string, string>[] {
 }
 
 function escapeCell(value: unknown): string {
-  const str = value === null || value === undefined ? "" : String(value);
+  let str = value === null || value === undefined ? "" : String(value);
+
+  // CSV formula injection guard: a cell starting with =, +, -, or @ is
+  // interpreted as a formula by Excel/Sheets when the file is opened
+  // (e.g. an asset named `=cmd|'/c calc'!A1` or a data-exfiltrating
+  // `=WEBSERVICE(...)`). Prefixing with a leading apostrophe forces it to
+  // be read as plain text instead — Excel drops the apostrophe on
+  // display, Sheets shows it, but neither executes the formula.
+  if (/^[=+\-@]/.test(str)) {
+    str = `'${str}`;
+  }
+
   if (/[",\n]/.test(str)) {
     return `"${str.replace(/"/g, '""')}"`;
   }
@@ -86,10 +97,9 @@ export function toCSV(rows: Array<Array<string | number | null | undefined>>): s
   return rows.map((row) => row.map(escapeCell).join(",")).join("\r\n");
 }
 
-/** Triggers a browser download of the given CSV text. */
-export function downloadCSV(filename: string, csvText: string) {
-  // Leading BOM so Excel opens UTF-8 CSVs (e.g. with ₦) without mangling them.
-  const blob = new Blob(["﻿" + csvText], { type: "text/csv;charset=utf-8;" });
+/** Triggers a browser download of any Blob under `filename` — shared by
+ * downloadCSV below and by the .xlsx template download in assetImport.ts. */
+export function downloadBlob(filename: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -98,4 +108,10 @@ export function downloadCSV(filename: string, csvText: string) {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+/** Triggers a browser download of the given CSV text. */
+export function downloadCSV(filename: string, csvText: string) {
+  // Leading BOM so Excel opens UTF-8 CSVs (e.g. with ₦) without mangling them.
+  downloadBlob(filename, new Blob(["﻿" + csvText], { type: "text/csv;charset=utf-8;" }));
 }
