@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, PlusSquare, Share } from "lucide-react";
+import { Download, Loader2, PlusSquare, Share } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useInstallPrompt } from "@/hooks/use-install-prompt";
 import { cn } from "@/lib/utils";
@@ -23,12 +23,21 @@ interface DownloadAppButtonProps {
 export function DownloadAppButton({ className, variant = "solid" }: DownloadAppButtonProps) {
   const { canInstall, promptInstall, isInstalled, isIOS } = useInstallPrompt();
   const [showHelp, setShowHelp] = useState(false);
+  // Only meaningful for the canInstall branch — the native browser install
+  // prompt's own "Install"/"Cancel" choice can sit open for a while, and
+  // without this the button just looks unresponsive the whole time.
+  const [installing, setInstalling] = useState(false);
 
   if (isInstalled) return null;
 
   const handleClick = async () => {
     if (canInstall) {
-      await promptInstall();
+      setInstalling(true);
+      try {
+        await promptInstall();
+      } finally {
+        setInstalling(false);
+      }
       return;
     }
     setShowHelp(true);
@@ -39,15 +48,17 @@ export function DownloadAppButton({ className, variant = "solid" }: DownloadAppB
       <button
         type="button"
         onClick={handleClick}
+        disabled={installing}
         className={cn(
           variant === "solid"
             ? "inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
             : "inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition hover:border-emerald-400/40 hover:text-emerald-500",
+          "disabled:pointer-events-none disabled:opacity-60",
           className
         )}
       >
-        <Download className="h-4 w-4" />
-        Download App
+        {installing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+        {installing ? "Installing…" : "Download App"}
       </button>
 
       <Dialog open={showHelp} onOpenChange={setShowHelp}>
