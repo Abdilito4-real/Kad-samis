@@ -16,8 +16,7 @@ interface BulkAssetRow {
   warrantyYears: number | null;
   status: string;
   categoryId: string;
-  latitude: number | null;
-  longitude: number | null;
+  geolocation: string | null;
 }
 
 interface SkippedRow {
@@ -124,7 +123,7 @@ export async function GET(req: Request) {
     let query = queryClient
       .from('assets')
       .select(
-        'id, asset_number, name, status, condition, make, purchase_year, purchase_value, warranty_years, latitude, longitude, created_at, organization_id, asset_categories(name)'
+        'id, asset_number, name, status, condition, make, purchase_year, purchase_value, warranty_years, geolocation, created_at, organization_id, asset_categories(name)'
       )
       .order('created_at', { ascending: false });
 
@@ -241,12 +240,6 @@ export async function POST(req: Request) {
       if (!row.condition || !ASSET_CONDITIONS.includes(row.condition as any)) reasons.push('Condition is missing or invalid');
       if (row.status && !ASSET_STATUSES.includes(row.status as any)) reasons.push('Status is invalid');
       if (!row.categoryId || !validCategoryIdSet.has(row.categoryId)) reasons.push('Category is missing or unrecognized');
-      if (row.latitude !== null && row.latitude !== undefined && (typeof row.latitude !== 'number' || row.latitude < -90 || row.latitude > 90)) {
-        reasons.push('Geolocation latitude must be a number between -90 and 90');
-      }
-      if (row.longitude !== null && row.longitude !== undefined && (typeof row.longitude !== 'number' || row.longitude < -180 || row.longitude > 180)) {
-        reasons.push('Geolocation longitude must be a number between -180 and 180');
-      }
 
       if (row.assetNumber) {
         if (existingNumberSet.has(row.assetNumber)) {
@@ -272,8 +265,7 @@ export async function POST(req: Request) {
         purchase_year: row.purchaseYear ?? null,
         purchase_value: row.purchaseValue ?? null,
         warranty_years: row.warrantyYears ?? null,
-        latitude: row.latitude ?? null,
-        longitude: row.longitude ?? null,
+        geolocation: row.geolocation || null,
         organization_id: ctx.profile.organization_id,
         created_by: ctx.user.id,
       });

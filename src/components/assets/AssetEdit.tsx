@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RequestAssetDialog } from "@/components/requests/RequestAssetDialog";
 import { useAuth } from "@/components/auth-provider";
 import { createClient } from "@/lib/supabase/client";
-import { formatGeolocation } from "@/lib/assetImport";
 
 interface AssetEditProps {
   asset: {
@@ -23,8 +22,7 @@ interface AssetEditProps {
     purchase_year: number | null;
     purchase_value: number | null;
     warranty_years: number | null;
-    latitude: number | null;
-    longitude: number | null;
+    geolocation: string | null;
   };
 }
 
@@ -43,7 +41,7 @@ export function AssetEdit({ asset }: AssetEditProps) {
     purchaseYear: asset.purchase_year !== null ? asset.purchase_year.toString() : "",
     purchaseValue: asset.purchase_value !== null ? asset.purchase_value.toString() : "",
     warrantyYears: asset.warranty_years !== null ? asset.warranty_years.toString() : "",
-    geolocation: formatGeolocation(asset.latitude, asset.longitude),
+    geolocation: asset.geolocation || "",
   };
 
   const handleSubmit = async (values: AssetFormValues) => {

@@ -139,8 +139,7 @@ export default function ImportAssetsPage() {
             warrantyYears: r.warrantyYears,
             status: r.status,
             categoryId: r.categoryId,
-            latitude: r.latitude,
-            longitude: r.longitude,
+            geolocation: r.geolocation,
           })),
         }),
       });

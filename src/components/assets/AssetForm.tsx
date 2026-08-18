@@ -24,9 +24,9 @@ export interface AssetFormValues {
   purchaseYear: string;
   purchaseValue: string;
   warrantyYears: string;
-  /** "latitude, longitude" — same single-field shape as the CSV template's
-   * Geolocation column, parsed server-side on save (see parseGeolocation
-   * in src/lib/assetImport.ts). Empty string means "not recorded". */
+  /** Free-text location/address — same field as the CSV template's
+   * Geolocation column. Not GPS coordinates. Empty string means "not
+   * recorded". */
   geolocation: string;
 }
 
@@ -259,9 +259,9 @@ export function AssetForm({ initialValues, onSubmit, submitLabel }: Props) {
           id="geolocation"
           value={values.geolocation}
           onChange={(event) => handleChange("geolocation", event.target.value)}
-          placeholder="9.0579, 7.4951"
+          placeholder="12 Ahmadu Bello Way, Kaduna"
         />
-        <p className="text-xs text-muted-foreground">Latitude, longitude — leave blank if not recorded.</p>
+        <p className="text-xs text-muted-foreground">Physical address or location description — leave blank if not recorded.</p>
       </div>
 
       <div className="flex justify-end">

@@ -39,8 +39,9 @@ export interface ParsedAssetRow {
   status: AssetStatus;
   categoryId: string | null;
   categoryName: string;
-  latitude: number | null;
-  longitude: number | null;
+  /** Free-text location/address (e.g. "12 Ahmadu Bello Way, Kaduna") — not
+   * GPS coordinates. */
+  geolocation: string | null;
   errors: string[];
 }
 
@@ -52,53 +53,6 @@ function findCell(record: Record<string, string>, ...names: string[]): string {
     if (key) return (record[key] ?? "").trim();
   }
   return "";
-}
-
-export interface ParsedGeolocation {
-  latitude: number | null;
-  longitude: number | null;
-  error?: string;
-}
-
-/**
- * Parses a single "latitude, longitude" cell/field into numeric
- * coordinates — the CSV/Excel template's one-column shape for what the
- * database stores as a split latitude/longitude pair, same as
- * buildings/facilities/inspections already do. Shared between CSV row
- * validation (below) and the single-asset edit form's PATCH handler so
- * both paths enforce the exact same format. Empty input is valid
- * (geolocation is optional) and returns nulls with no error.
- */
-export function parseGeolocation(raw: string): ParsedGeolocation {
-  const trimmed = raw.trim();
-  if (!trimmed) return { latitude: null, longitude: null };
-
-  const parts = trimmed.split(",").map((p) => p.trim());
-  if (parts.length !== 2) {
-    return { latitude: null, longitude: null, error: `Geolocation "${raw}" must be "latitude, longitude"` };
-  }
-
-  const [latRaw, lngRaw] = parts;
-  const latitude = Number(latRaw);
-  const longitude = Number(lngRaw);
-
-  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
-    return { latitude: null, longitude: null, error: `Geolocation latitude "${latRaw}" must be a number between -90 and 90` };
-  }
-  if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
-    return { latitude: null, longitude: null, error: `Geolocation longitude "${lngRaw}" must be a number between -180 and 180` };
-  }
-
-  return { latitude, longitude };
-}
-
-/** Formats stored latitude/longitude back into the same "latitude,
- * longitude" shape used for input and CSV/Excel export — the inverse of
- * parseGeolocation. Either coordinate missing renders as "" rather than a
- * partial/misleading value. */
-export function formatGeolocation(latitude: number | null | undefined, longitude: number | null | undefined): string {
-  if (latitude === null || latitude === undefined || longitude === null || longitude === undefined) return "";
-  return `${latitude}, ${longitude}`;
 }
 
 /**
@@ -269,18 +223,6 @@ export function validateAssetRow(
     }
   }
 
-  let latitude: number | null = null;
-  let longitude: number | null = null;
-  if (geolocationRaw) {
-    const parsedGeo = parseGeolocation(geolocationRaw);
-    if (parsedGeo.error) {
-      errors.push(parsedGeo.error);
-    } else {
-      latitude = parsedGeo.latitude;
-      longitude = parsedGeo.longitude;
-    }
-  }
-
   return {
     rowNumber,
     assetNumber,
@@ -293,8 +235,7 @@ export function validateAssetRow(
     status,
     categoryId,
     categoryName: categoryRaw,
-    latitude,
-    longitude,
+    geolocation: geolocationRaw || null,
     errors,
   };
 }
