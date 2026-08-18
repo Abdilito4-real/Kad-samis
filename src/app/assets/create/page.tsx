@@ -9,15 +9,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
-import { parseCSVWithHeader, downloadCSV } from "@/lib/csv";
+import { parseCSVWithHeader, downloadBlob } from "@/lib/csv";
 import {
   ASSET_CONDITIONS,
   ASSET_STATUSES,
-  buildAssetTemplateCSV,
+  buildAssetTemplateWorkbook,
+  parseAssetWorkbook,
   validateAssetRow,
   type AssetCategoryOption,
   type ParsedAssetRow,
 } from "@/lib/assetImport";
+
+const EXCEL_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const isExcelFile = (file: File) => /\.xlsx$/i.test(file.name) || file.type === EXCEL_MIME;
 
 type ImportResult = {
   created: Array<{ asset_number: string; name: string }>;
@@ -33,6 +37,7 @@ export default function ImportAssetsPage() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [parsedRows, setParsedRows] = useState<ParsedAssetRow[]>([]);
   const [importing, setImporting] = useState(false);
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
 
   const validRows = useMemo(() => parsedRows.filter((r) => r.errors.length === 0), [parsedRows]);
@@ -54,13 +59,19 @@ export default function ImportAssetsPage() {
   };
 
   const handleDownloadTemplate = async () => {
-    const cats = await ensureCategories();
-    if (cats.length === 0) {
-      toast.error("No asset categories are configured yet. Ask a super admin to add one first.");
-      return;
+    setDownloadingTemplate(true);
+    try {
+      const cats = await ensureCategories();
+      if (cats.length === 0) {
+        toast.error("No asset categories are configured yet. Ask a super admin to add one first.");
+        return;
+      }
+      const workbook = await buildAssetTemplateWorkbook();
+      downloadBlob("assets-import-template.xlsx", workbook);
+      toast.success("Template downloaded");
+    } finally {
+      setDownloadingTemplate(false);
     }
-    downloadCSV("assets-import-template.csv", buildAssetTemplateCSV(cats));
-    toast.success("Template downloaded");
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,8 +89,7 @@ export default function ImportAssetsPage() {
     setFileName(file.name);
 
     try {
-      const text = await file.text();
-      const records = parseCSVWithHeader(text);
+      const records = isExcelFile(file) ? await parseAssetWorkbook(file) : parseCSVWithHeader(await file.text());
       if (records.length === 0) {
         toast.error("That file has no data rows.");
         setParsedRows([]);
@@ -96,8 +106,8 @@ export default function ImportAssetsPage() {
         toast.success(`${rows.length} rows look good — ready to import.`);
       }
     } catch (error) {
-      console.error("CSV parse failed", error);
-      toast.error("Unable to read that file. Make sure it's a CSV exported from the template.");
+      console.error("Import file parse failed", error);
+      toast.error("Unable to read that file. Make sure it's the CSV or Excel file from the downloaded template.");
     }
   };
 
@@ -165,26 +175,33 @@ export default function ImportAssetsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Import assets from CSV</CardTitle>
+          <CardTitle>Import assets in bulk</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Download the template, fill in one row per asset, then upload it here. Assets are added to the register
-            in bulk — no more filling out a form one asset at a time.
+            Download the Excel template, fill in one row per asset, then upload it here (CSV also accepted). Assets
+            are added to the register in bulk — no more filling out a form one asset at a time.
           </p>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Button type="button" variant="outline" onClick={handleDownloadTemplate} className="gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleDownloadTemplate}
+              isLoading={downloadingTemplate}
+              loadingText="Preparing…"
+              className="gap-2"
+            >
               <Download className="h-4 w-4" />
-              Download CSV template
+              Download Excel template
             </Button>
             <Button type="button" onClick={() => fileInputRef.current?.click()} className="gap-2">
               <Upload className="h-4 w-4" />
-              Upload filled-in CSV
+              Upload filled-in file
             </Button>
             <input
               ref={fileInputRef}
               type="file"
-              accept=".csv,text/csv"
+              accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               className="hidden"
               onChange={handleFileChange}
             />
@@ -223,7 +240,7 @@ export default function ImportAssetsPage() {
               {invalidRows.length > 0 && (
                 <div className="overflow-hidden rounded-2xl border border-rose-500/20">
                   <div className="bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-600">
-                    Fix these rows in your CSV and re-upload
+                    Fix these rows in your file and re-upload
                   </div>
                   <div className="max-h-64 overflow-y-auto divide-y divide-border">
                     {invalidRows.map((row) => (
