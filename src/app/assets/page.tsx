@@ -144,6 +144,7 @@ export default function AssetsPage() {
         asset.warranty_years ?? "",
         asset.status ?? "",
         asset.asset_categories?.[0]?.name ?? "",
+        asset.geolocation ?? "",
       ]),
     ];
 

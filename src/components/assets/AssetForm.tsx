@@ -24,6 +24,10 @@ export interface AssetFormValues {
   purchaseYear: string;
   purchaseValue: string;
   warrantyYears: string;
+  /** Free-text location/address — same field as the CSV template's
+   * Geolocation column. Not GPS coordinates. Empty string means "not
+   * recorded". */
+  geolocation: string;
 }
 
 const defaultValues: AssetFormValues = {
@@ -36,6 +40,7 @@ const defaultValues: AssetFormValues = {
   purchaseYear: "",
   purchaseValue: "",
   warrantyYears: "",
+  geolocation: "",
 };
 
 interface Props {
@@ -246,6 +251,17 @@ export function AssetForm({ initialValues, onSubmit, submitLabel }: Props) {
             placeholder="2"
           />
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="geolocation">Geolocation (optional)</Label>
+        <Input
+          id="geolocation"
+          value={values.geolocation}
+          onChange={(event) => handleChange("geolocation", event.target.value)}
+          placeholder="12 Ahmadu Bello Way, Kaduna"
+        />
+        <p className="text-xs text-muted-foreground">Physical address or location description — leave blank if not recorded.</p>
       </div>
 
       <div className="flex justify-end">

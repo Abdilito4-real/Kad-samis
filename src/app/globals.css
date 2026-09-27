@@ -76,6 +76,27 @@
   }
 }
 
+  @keyframes request-crawl {
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  .request-crawl {
+    animation: request-crawl 36s linear infinite;
+  }
+
+  .request-ticker:hover .request-crawl,
+  .request-ticker:focus-within .request-crawl {
+    animation-play-state: paused;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .request-crawl {
+      animation: none;
+    }
+  }
+
 /* Scrollbar Styling */
 ::-webkit-scrollbar {
   width: 8px;

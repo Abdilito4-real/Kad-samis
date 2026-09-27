@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from 'react';
-import { Building2, Check, Copy, Eye, EyeOff, RefreshCw, X } from 'lucide-react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { AlertTriangle, Building2, Check, Copy, Eye, EyeOff, RefreshCw, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
@@ -22,7 +22,92 @@ const ROLE_LABELS: Record<string, string> = {
   agency_admin: 'Agency Admin',
 };
 
-export default function CreateOrganizationDialog({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated?: (org: any) => void }) {
+type ExistingOrganization = {
+  id: string;
+  name: string;
+  organization_type?: string | null;
+  email?: string | null;
+  phone?: string | null;
+};
+
+function normalizeOrganizationName(value: string) {
+  return value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\b(of|the|and|for)\b/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+function getNameSimilarity(left: string, right: string) {
+  if (!left || !right) return 0;
+  const previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+
+  for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
+    let diagonal = previous[0];
+    previous[0] = leftIndex;
+
+    for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
+      const above = previous[rightIndex];
+      previous[rightIndex] = Math.min(
+        previous[rightIndex] + 1,
+        previous[rightIndex - 1] + 1,
+        diagonal + (left[leftIndex - 1] === right[rightIndex - 1] ? 0 : 1)
+      );
+      diagonal = above;
+    }
+  }
+
+  return 1 - previous[right.length] / Math.max(left.length, right.length);
+}
+
+function getMatchReasons(name: string, email: string, phone: string, existing: ExistingOrganization) {
+  const reasons: string[] = [];
+  const normalizedName = normalizeOrganizationName(name);
+  const existingName = normalizeOrganizationName(existing.name);
+  const normalizedEmail = email.trim().toLowerCase();
+  const existingEmail = (existing.email || '').trim().toLowerCase();
+  const normalizedPhone = phone.replace(/\D/g, '');
+  const existingPhone = (existing.phone || '').replace(/\D/g, '');
+
+  if (normalizedEmail && existingEmail && normalizedEmail === existingEmail) {
+    reasons.push('Office email');
+  }
+  if (normalizedPhone.length >= 7 && existingPhone.length >= 7 && normalizedPhone === existingPhone) {
+    reasons.push('Phone number');
+  }
+  if (normalizedName && existingName) {
+    if (normalizedName === existingName) {
+      reasons.push('Organization name');
+    } else {
+      const currentWords = new Set(normalizedName.split(' '));
+      const existingWords = new Set(existingName.split(' '));
+      const sharedWords = [...currentWords].filter((word) => existingWords.has(word)).length;
+      const containment = sharedWords / Math.min(currentWords.size, existingWords.size);
+      const similarity = getNameSimilarity(normalizedName, existingName);
+
+      if ((Math.min(currentWords.size, existingWords.size) >= 2 && containment >= 0.8) || similarity >= 0.88) {
+        reasons.push('Similar organization name');
+      }
+    }
+  }
+
+  return reasons;
+}
+
+export default function CreateOrganizationDialog({
+  open,
+  onClose,
+  onCreated,
+  existingOrganizations,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreated?: (org: any) => void;
+  existingOrganizations: ExistingOrganization[];
+}) {
   const [name, setName] = useState('');
   const [type, setType] = useState('MINISTRY');
   const [email, setEmail] = useState('');
@@ -41,6 +126,16 @@ export default function CreateOrganizationDialog({ open, onClose, onCreated }: {
   const isStep1Complete = Boolean(name.trim());
   const isStep2Complete = Boolean(adminName.trim() && adminEmail.trim() && isEmailValid(adminEmail) && adminPassword.trim());
   const canSubmit = Boolean(isStep1Complete && isStep2Complete && hasCopiedCredentials);
+  const possibleMatches = useMemo(
+    () => existingOrganizations
+      .map((organization) => ({
+        organization,
+        reasons: getMatchReasons(name, email, phone, organization),
+      }))
+      .filter((match) => match.reasons.length > 0)
+      .slice(0, 5),
+    [existingOrganizations, name, email, phone]
+  );
 
   const canClose = step !== 3 || hasCopiedCredentials;
 
@@ -135,16 +230,16 @@ export default function CreateOrganizationDialog({ open, onClose, onCreated }: {
         if (!next) onClose();
       }}
     >
-      <DialogContent className="w-full max-w-xl gap-0 overflow-hidden rounded-[2rem] p-0" hideClose>
-        <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+      <DialogContent className="max-h-[94dvh] w-full gap-0 overflow-hidden rounded-t-[1.5rem] p-0 sm:max-h-[calc(100dvh-2rem)] sm:max-w-xl sm:rounded-[2rem]" hideClose>
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3 sm:items-start sm:gap-4 sm:px-5 sm:py-4">
           <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-500">
-              <Building2 className="h-5 w-5" />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500 sm:h-11 sm:w-11 sm:rounded-2xl">
+              <Building2 className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
             <div className="space-y-1">
-              <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">Organization registration</p>
-              <h3 className="text-xl font-semibold leading-tight">Register a new MDA</h3>
-              <p className="text-sm text-muted-foreground">Create a Ministry, Department, or Agency and assign its administrator.</p>
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground sm:text-xs">Organization registration</p>
+              <h3 className="text-lg font-semibold leading-tight sm:text-xl">Register a new MDA</h3>
+              <p className="hidden text-sm text-muted-foreground sm:block">Create a Ministry, Department, or Agency and assign its administrator.</p>
             </div>
           </div>
           <button
@@ -159,7 +254,7 @@ export default function CreateOrganizationDialog({ open, onClose, onCreated }: {
           </button>
         </div>
 
-        <form onSubmit={step === 3 ? submit : (e) => e.preventDefault()} className="space-y-4 p-5 max-h-[calc(100vh-18rem)] overflow-y-auto">
+        <form onSubmit={step === 3 ? submit : (e) => e.preventDefault()} className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4 sm:p-5">
           <div className="space-y-3 rounded-3xl border border-border bg-muted/50 p-3">
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold text-foreground">Step {step} of 3</p>
@@ -248,6 +343,27 @@ export default function CreateOrganizationDialog({ open, onClose, onCreated }: {
                     />
                   </label>
                 </div>
+                {possibleMatches.length > 0 && (
+                  <div role="status" aria-live="polite" className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground">Possible existing organizations</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Review these records before continuing. Exact name or office-email duplicates cannot be registered again.</p>
+                        <ul className="mt-3 space-y-2">
+                          {possibleMatches.map(({ organization, reasons }) => (
+                            <li key={organization.id} className="border-t border-amber-500/15 pt-2 first:border-0 first:pt-0">
+                              <p className="break-words text-sm font-medium text-foreground">{organization.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {[organization.organization_type, `Matched by ${reasons.join(', ')}`].filter(Boolean).join(' · ')}
+                              </p>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </motion.div>
             )}
 
@@ -409,7 +525,7 @@ export default function CreateOrganizationDialog({ open, onClose, onCreated }: {
             )}
           </AnimatePresence>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
+          <div className="sticky bottom-0 z-10 -mx-4 -mb-4 mt-2 flex gap-3 border-t border-border bg-background/95 px-4 py-3 backdrop-blur sm:-mx-5 sm:-mb-5 sm:px-5">
             <button
               type="button"
               onClick={() => {
@@ -419,7 +535,7 @@ export default function CreateOrganizationDialog({ open, onClose, onCreated }: {
                   setStep((prev) => (Math.max(prev - 1, 1) as 1 | 2 | 3));
                 }
               }}
-              className="inline-flex w-full items-center justify-center rounded-full border border-border bg-background px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+              className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full border border-border bg-background px-3 py-3 text-sm font-semibold text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:px-5"
               disabled={loading}
             >
               {step === 1 ? 'Cancel' : 'Back'}
@@ -432,7 +548,7 @@ export default function CreateOrganizationDialog({ open, onClose, onCreated }: {
                   if (step === 2 && !isStep2Complete) return;
                   setStep((prev) => (Math.min(prev + 1, 3) as 1 | 2 | 3));
                 }}
-                className="inline-flex w-full items-center justify-center rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-emerald-500/30 transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none sm:w-auto"
+                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full bg-emerald-500 px-3 py-3 text-sm font-semibold text-white shadow-sm shadow-emerald-500/30 transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none sm:flex-none sm:px-5"
                 disabled={
                   loading ||
                   (step === 1 && !isStep1Complete) ||

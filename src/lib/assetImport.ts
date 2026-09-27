@@ -12,6 +12,7 @@ export const ASSET_CSV_HEADERS = [
   "Warranty Years",
   "Status",
   "Category",
+  "Geolocation",
 ] as const;
 
 export const ASSET_CONDITIONS = ["excellent", "good", "fair", "poor", "damaged"] as const;
@@ -38,6 +39,9 @@ export interface ParsedAssetRow {
   status: AssetStatus;
   categoryId: string | null;
   categoryName: string;
+  /** Free-text location/address (e.g. "12 Ahmadu Bello Way, Kaduna") — not
+   * GPS coordinates. */
+  geolocation: string | null;
   errors: string[];
 }
 
@@ -148,6 +152,7 @@ export function validateAssetRow(
   const warrantyRaw = findCell(record, "Warranty Years");
   const statusRaw = findCell(record, "Status");
   const categoryRaw = findCell(record, "Category");
+  const geolocationRaw = findCell(record, "Geolocation");
 
   if (!name) errors.push("Assets Name is required");
   if (!assetNumber) errors.push("Assets ID or Number is required");
@@ -230,6 +235,7 @@ export function validateAssetRow(
     status,
     categoryId,
     categoryName: categoryRaw,
+    geolocation: geolocationRaw || null,
     errors,
   };
 }

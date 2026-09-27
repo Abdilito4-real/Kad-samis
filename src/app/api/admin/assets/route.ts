@@ -16,6 +16,7 @@ interface BulkAssetRow {
   warrantyYears: number | null;
   status: string;
   categoryId: string;
+  geolocation: string | null;
 }
 
 interface SkippedRow {
@@ -122,7 +123,7 @@ export async function GET(req: Request) {
     let query = queryClient
       .from('assets')
       .select(
-        'id, asset_number, name, status, condition, make, purchase_year, purchase_value, warranty_years, created_at, organization_id, asset_categories(name)'
+        'id, asset_number, name, status, condition, make, purchase_year, purchase_value, warranty_years, geolocation, created_at, organization_id, asset_categories(name)'
       )
       .order('created_at', { ascending: false });
 
@@ -264,6 +265,7 @@ export async function POST(req: Request) {
         purchase_year: row.purchaseYear ?? null,
         purchase_value: row.purchaseValue ?? null,
         warranty_years: row.warrantyYears ?? null,
+        geolocation: row.geolocation || null,
         organization_id: ctx.profile.organization_id,
         created_by: ctx.user.id,
       });

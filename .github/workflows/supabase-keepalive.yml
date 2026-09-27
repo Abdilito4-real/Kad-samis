@@ -1,0 +1,30 @@
+name: Supabase activity check
+
+# Best-effort activity for Supabase Free projects. Supabase does not document
+# this as a guarantee against inactivity pauses; Pro is the only guaranteed
+# way to prevent those pauses.
+on:
+  schedule:
+    - cron: "17 5 * * *" # Daily at 05:17 UTC
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call the read-only public stats RPC
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::Set SUPABASE_URL and SUPABASE_ANON_KEY in repository Actions secrets."
+            exit 1
+          fi
+
+          curl --fail-with-body --silent --show-error --max-time 30 \
+            --request POST "$SUPABASE_URL/rest/v1/rpc/public_platform_stats" \
+            --header "apikey: $SUPABASE_ANON_KEY" \
+            --header "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            --header "Content-Type: application/json" \
+            --data '{}'

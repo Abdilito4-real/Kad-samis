@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowLeft, CheckCircle2, Download, FileSpreadsheet, Upload, XCircle } from "lucide-react";
+import { Activity, ArrowLeft, CheckCircle2, Download, FileSpreadsheet, Tags, Upload, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -139,6 +139,7 @@ export default function ImportAssetsPage() {
             warrantyYears: r.warrantyYears,
             status: r.status,
             categoryId: r.categoryId,
+            geolocation: r.geolocation,
           })),
         }),
       });
@@ -207,22 +208,76 @@ export default function ImportAssetsPage() {
             />
           </div>
 
-          <div className="grid gap-4 rounded-2xl border border-border bg-muted/30 p-4 text-sm sm:grid-cols-3">
-            <div>
-              <p className="font-medium text-foreground">Condition must be one of</p>
-              <p className="mt-1 text-muted-foreground capitalize">{ASSET_CONDITIONS.join(", ")}</p>
+          <div className="grid overflow-hidden rounded-2xl border border-border bg-card sm:grid-cols-3 sm:divide-x sm:divide-border">
+            <div className="min-w-0 p-4 sm:p-5">
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                Condition
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">Choose one condition</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {ASSET_CONDITIONS.map((condition) => {
+                  const tone = {
+                    excellent: "bg-emerald-500/10 text-emerald-700 ring-emerald-500/20 dark:text-emerald-300",
+                    good: "bg-sky-500/10 text-sky-700 ring-sky-500/20 dark:text-sky-300",
+                    fair: "bg-amber-500/10 text-amber-700 ring-amber-500/20 dark:text-amber-300",
+                    poor: "bg-orange-500/10 text-orange-700 ring-orange-500/20 dark:text-orange-300",
+                    damaged: "bg-rose-500/10 text-rose-700 ring-rose-500/20 dark:text-rose-300",
+                  }[condition] ?? "bg-muted text-muted-foreground ring-border";
+
+                  return (
+                    <span key={condition} className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ring-1 ring-inset ${tone}`}>
+                      {condition}
+                    </span>
+                  );
+                })}
+              </div>
             </div>
-            <div>
-              <p className="font-medium text-foreground">Status must be one of</p>
-              <p className="mt-1 text-muted-foreground capitalize">{ASSET_STATUSES.join(", ")}</p>
+            <div className="min-w-0 border-t border-border p-4 sm:border-t-0 sm:p-5">
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <Activity className="h-4 w-4 shrink-0 text-sky-600" />
+                Status
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">Choose one status</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {ASSET_STATUSES.map((status) => {
+                  const tone = {
+                    active: "bg-emerald-500/10 text-emerald-700 ring-emerald-500/20 dark:text-emerald-300",
+                    inactive: "bg-slate-500/10 text-slate-700 ring-slate-500/20 dark:text-slate-300",
+                    maintenance: "bg-amber-500/10 text-amber-700 ring-amber-500/20 dark:text-amber-300",
+                    disposal: "bg-rose-500/10 text-rose-700 ring-rose-500/20 dark:text-rose-300",
+                    archived: "bg-zinc-500/10 text-zinc-700 ring-zinc-500/20 dark:text-zinc-300",
+                  }[status] ?? "bg-muted text-muted-foreground ring-border";
+
+                  return (
+                    <span key={status} className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ring-1 ring-inset ${tone}`}>
+                      {status}
+                    </span>
+                  );
+                })}
+              </div>
             </div>
-            <div>
-              <p className="font-medium text-foreground">Category must match exactly</p>
-              <p className="mt-1 text-muted-foreground">
-                {categoriesLoaded
-                  ? categories.map((c) => c.name).join(", ") || "No categories configured yet"
-                  : "Loaded when you download the template or upload a file"}
-              </p>
+            <div className="min-w-0 border-t border-border p-4 sm:p-5">
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <Tags className="h-4 w-4 shrink-0 text-violet-600" />
+                Category
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">Names must match exactly</p>
+              {categoriesLoaded ? (
+                categories.length > 0 ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {categories.map((category) => (
+                      <span key={category.id} className="max-w-full break-words rounded-lg border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-foreground">
+                        {category.name}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-muted-foreground">No categories configured yet.</p>
+                )
+              ) : (
+                <p className="mt-3 text-sm text-muted-foreground">Category names load with the template or uploaded file.</p>
+              )}
             </div>
           </div>
 
