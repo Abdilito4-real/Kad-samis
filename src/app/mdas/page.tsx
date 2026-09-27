@@ -262,7 +262,7 @@ export default function MdasPage() {
             </div>
           </section>
 
-          <ResponsiveGrid cols={{ base: 1, md: 2, xl: 6 }}>
+          <ResponsiveGrid cols={{ base: 1, sm: 2, md: 2, xl: 3 }} className="2xl:grid-cols-6">
             <StatsCard title="Total Organizations" value={orgs.length} icon={<LayoutDashboard className="h-6 w-6" />} tone="neutral" loading={loading} />
             <StatsCard title="Ministries" value={(grouped['MINISTRY'] || []).length} icon={<Building2 className="h-6 w-6" />} tone="emerald" loading={loading} />
             <StatsCard title="Departments" value={(grouped['DEPARTMENT'] || []).length} icon={<LayoutDashboard className="h-6 w-6" />} tone="sky" loading={loading} />
@@ -271,11 +271,10 @@ export default function MdasPage() {
             <StatsCard title="Pending Requests" value={pendingRequests} icon={<Mail className="h-6 w-6" />} tone="rose" loading={loading} />
           </ResponsiveGrid>
 
-          {/* Toolbar: search, filters, and actions each get their own row so the
-              hierarchy reads top-to-bottom instead of competing for space. */}
           <section className="rounded-[2rem] border border-border bg-card p-4 shadow-sm sm:p-6">
-            <div className="space-y-5">
-              <div className="relative">
+            <div className="space-y-4">
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                <div className="relative min-w-0">
                 <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="search"
@@ -287,8 +286,27 @@ export default function MdasPage() {
                 />
               </div>
 
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div className="grid flex-1 gap-3 sm:grid-cols-3">
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap lg:justify-end">
+                  <button
+                    onClick={handleExport}
+                    className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-background px-3 py-3 text-sm font-medium transition hover:bg-accent sm:px-5 ${!isSuperAdmin ? 'col-span-2 sm:col-span-1' : ''}`}
+                  >
+                    <FileText className="h-4 w-4" /> Export
+                  </button>
+                  {isSuperAdmin && (
+                    <button
+                      onClick={() => setDialogOpen(true)}
+                      className="col-span-1 inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-emerald-500 px-3 py-3 text-sm font-semibold text-white shadow-sm shadow-emerald-500/30 transition hover:bg-emerald-600 sm:px-5"
+                    >
+                      <Plus className="h-4 w-4 shrink-0" />
+                      <span className="sm:hidden">Register MDA</span>
+                      <span className="hidden sm:inline">Register Organization</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   <div className="space-y-1.5">
                     <span className="px-1 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">Organization</span>
                     <Select value={typeFilter} onValueChange={(value) => { setTypeFilter(value); setPageIndex(1); }}>
@@ -331,24 +349,6 @@ export default function MdasPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
-
-                <div className="flex shrink-0 items-center gap-3">
-                  <button
-                    onClick={handleExport}
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-background px-5 py-3 text-sm font-medium transition hover:bg-accent"
-                  >
-                    <FileText className="h-4 w-4" /> Export
-                  </button>
-                  {isSuperAdmin && (
-                    <button
-                      onClick={() => setDialogOpen(true)}
-                      className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-emerald-500/30 transition hover:bg-emerald-600"
-                    >
-                      <Plus className="h-4 w-4" /> Register Organization
-                    </button>
-                  )}
-                </div>
               </div>
             </div>
           </section>
@@ -436,10 +436,15 @@ export default function MdasPage() {
 
       <OrganizationDrawer org={drawerOrg} open={!!drawerOrg} initiallyEditing={drawerEdit} readOnly={isSuperAdmin} onClose={() => { setDrawerOrg(null); setDrawerEdit(false); }} onDelete={isSuperAdmin ? undefined : (id) => deleteOrganization(id)} onUpdate={isSuperAdmin ? undefined : updateOrganization} />
 
-      <CreateOrganizationDialog open={dialogOpen} onClose={() => setDialogOpen(false)} onCreated={(org) => {
-        setOrgs((prev) => [org, ...prev]);
-        toast.success('Organization added');
-      }} />
+      <CreateOrganizationDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        existingOrganizations={orgs}
+        onCreated={(org) => {
+          setOrgs((prev) => [org, ...prev]);
+          toast.success('Organization added');
+        }}
+      />
     </>
   );
 }

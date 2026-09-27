@@ -18,10 +18,10 @@ Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   environment: process.env.NODE_ENV,
 
-  // Percentage of transactions captured for performance monitoring. 1.0
-  // (100%) is fine at low traffic; turn this down once real usage picks
-  // up so you don't burn through the free-tier event quota.
-  tracesSampleRate: 1.0,
+  // Skip browser performance instrumentation during local Fast Refresh,
+  // where repeated layout shifts can produce invalid Web Vitals entries.
+  // Keep full transaction sampling in production while traffic is low.
+  tracesSampleRate: process.env.NODE_ENV === "production" ? 1.0 : 0,
 
   // Session Replay is deliberately NOT enabled here — it's the heaviest
   // part of the SDK's client bundle (tens of KB) for a feature that

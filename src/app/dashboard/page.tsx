@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -120,6 +120,48 @@ export default function DashboardPage() {
   const [superAdminDashboard, setSuperAdminDashboard] = useState<any>(null);
   const [loadingSuperAdminData, setLoadingSuperAdminData] = useState(false);
   const [superAdminDashboardError, setSuperAdminDashboardError] = useState<string | null>(null);
+  const [superAdminRequests, setSuperAdminRequests] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!isSuperAdmin || !user || orgId) {
+      setSuperAdminRequests([]);
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadPendingRequests = async () => {
+      try {
+        const supabase = createClient();
+        const { data: { session } } = supabase
+          ? await supabase.auth.getSession()
+          : { data: { session: null } };
+
+        if (!session?.access_token) return;
+
+        const response = await fetch("/api/admin/requests?status=pending", {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          cache: "no-store",
+          credentials: "include",
+        });
+        const data = await response.json();
+
+        if (isMounted && response.ok) {
+          setSuperAdminRequests(data.requests ?? []);
+        }
+      } catch (error) {
+        console.error("Pending request ticker load error", error);
+      }
+    };
+
+    loadPendingRequests();
+    const intervalId = window.setInterval(loadPendingRequests, 30_000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+    };
+  }, [isSuperAdmin, user, orgId]);
 
   useEffect(() => {
     // Sessions live in localStorage, not cookies (see lib/supabase/client.ts),
@@ -310,7 +352,7 @@ export default function DashboardPage() {
   const isLoadingDashboard = loadingSummary || (isSuperAdmin && loadingSuperAdminData);
   const superAdminPortfolioValue = superAdminDashboard?.portfolio?.totalCurrentValue;
   const superAdminOrgMetrics = (superAdminDashboard?.organizationMetrics ?? []) as Array<any>;
-  const superAdminPendingApprovals = (superAdminDashboard?.pendingRequests ?? []) as Array<any>;
+  const superAdminPendingApprovals = superAdminRequests;
 
   const formatCurrency = (value: number | string | null | undefined) => {
     const numericValue = typeof value === "number" ? value : Number(value ?? 0);
@@ -322,11 +364,22 @@ export default function DashboardPage() {
       maximumFractionDigits: 0,
     }).format(numericValue);
   };
+  const formatCompactCurrency = (value: number | string | null | undefined) => {
+    const numericValue = typeof value === "number" ? value : Number(value ?? 0);
+    if (!Number.isFinite(numericValue)) {
+      return "—";
+    }
+
+    return new Intl.NumberFormat("en-NG", {
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(numericValue);
+  };
 
   // Check if viewing org-specific view or if org admin is viewing their own org
   const isOrgView = orgId || (!isSuperAdmin && summary?.organization);
 
-  const statsToRender: Array<{ title: string; value: string | number; detail: string; icon: any; tone: Tone }> = isOrgView
+  const statsToRender: Array<{ title: string; value: ReactNode; detail: string; icon: any; tone: Tone }> = isOrgView
     ? [
         {
           title: "Organization",
@@ -384,8 +437,18 @@ export default function DashboardPage() {
         },
         {
           title: "Portfolio value",
-          value: superAdminPortfolioValue ? `₦${formatCurrency(superAdminPortfolioValue)}` : "—",
-          detail: "Live asset value after depreciation",
+          value: superAdminPortfolioValue ? (
+            <span
+              title={`₦${formatCurrency(superAdminPortfolioValue)}`}
+              aria-label={`Exact portfolio value: ₦${formatCurrency(superAdminPortfolioValue)}`}
+              className="whitespace-nowrap"
+            >
+              ₦{formatCompactCurrency(superAdminPortfolioValue)}
+            </span>
+          ) : "—",
+          detail: superAdminPortfolioValue
+            ? `Exact value: ₦${formatCurrency(superAdminPortfolioValue)}`
+            : "Live asset value after depreciation",
           icon: TrendingUp,
           // A financial total isn't inherently a warning — it was previously
           // colored red/rose here, which reads as "something's wrong."
@@ -443,6 +506,37 @@ export default function DashboardPage() {
           </div>
         </div>
       </motion.div>
+
+      {isSuperAdmin && !orgId && superAdminPendingApprovals.length > 0 ? (
+        <div
+          role="status"
+          aria-label={`${superAdminPendingApprovals.length} requests awaiting review`}
+          className="request-ticker flex min-w-0 flex-col gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 sm:flex-row sm:items-center"
+        >
+          <div className="flex shrink-0 items-center gap-2 text-amber-700 dark:text-amber-400">
+            <FileSearch className="h-5 w-5" />
+            <span className="text-sm font-semibold">Requests awaiting review</span>
+          </div>
+          <div className="min-w-0 flex-1 overflow-hidden" aria-hidden="true">
+            <div className="request-crawl flex w-max items-center">
+              {[0, 1].map((copy) => (
+                <div key={copy} className="flex shrink-0 items-center">
+                  {superAdminPendingApprovals.map((request: any) => (
+                    <span key={`${copy}-${request.id}`} className="flex items-center whitespace-nowrap px-5 text-sm text-foreground">
+                      <span className="font-medium">{request.title || "New request"}</span>
+                      <span className="px-2 text-amber-600" aria-hidden="true">•</span>
+                      <span className="text-muted-foreground">{request.organizations?.name || "Organization"}</span>
+                    </span>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+          <Link href="/requests" className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-amber-700 hover:underline dark:text-amber-400">
+            Review <ArrowUpRight className="h-4 w-4" />
+          </Link>
+        </div>
+      ) : null}
 
       {isLoadingDashboard ? (
         <ResponsiveGrid cols={{ base: 1, md: 2, xl: 4 }}>
