@@ -87,6 +87,24 @@ pm2 startup
 
 ## Supabase Configuration
 
+### Best-effort activity check for Free projects
+
+The GitHub Actions workflow `.github/workflows/supabase-keepalive.yml` calls
+the read-only `public_platform_stats` RPC once daily. This is best effort only:
+Supabase may still pause low-activity Free projects, and upgrading to Pro is the
+only guaranteed way to prevent inactivity pauses.
+
+To enable the workflow:
+
+1. Merge the workflow into the repository's default branch (`main`). GitHub
+   scheduled workflows only run from the default branch.
+2. In GitHub, open **Settings → Secrets and variables → Actions** and add:
+   - `SUPABASE_URL`: the Project URL from Supabase API settings.
+   - `SUPABASE_ANON_KEY`: the anon/public key used by the app's
+     `NEXT_PUBLIC_SUPABASE_ANON_KEY` environment variable.
+3. Ensure migration `021_public_stats_rpc.sql` has been applied to the Supabase
+   project. The workflow can also be started manually from the Actions tab.
+
 ### Create Database Policies
 
 Run SQL migrations in Supabase SQL Editor:
