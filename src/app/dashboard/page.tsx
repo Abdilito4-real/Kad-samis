@@ -21,6 +21,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ResponsiveGrid } from "@/components/layout/ResponsiveGrid";
 import { MetricCard } from "@/components/layout/MetricCard";
 import { MetricCardSkeleton, ListRowSkeleton } from "@/components/ui/skeletons";
@@ -500,9 +501,17 @@ export default function DashboardPage() {
 
           {/* Was a separate "Profile" box repeating the same name already in the
               heading above, plus a role pill. Collapsed into one compact badge. */}
-          <div className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-full border border-border bg-background/60 px-3 py-1.5 text-[11px] font-medium text-muted-foreground">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            {isSuperAdmin ? "Super admin overview" : headerOrgLabel}
+          <div className="flex shrink-0 flex-wrap items-center gap-3 self-start">
+            <Button asChild size="sm" className="gap-2">
+              <Link href="/assets">
+                <Package className="h-4 w-4" />
+                Asset Register
+              </Link>
+            </Button>
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/60 px-3 py-1.5 text-[11px] font-medium text-muted-foreground">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              {isSuperAdmin ? "Super admin overview" : headerOrgLabel}
+            </div>
           </div>
         </div>
       </motion.div>

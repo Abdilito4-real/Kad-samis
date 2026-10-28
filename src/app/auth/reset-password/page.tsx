@@ -29,6 +29,13 @@ export default function ResetPasswordPage() {
       }
 
       try {
+        const hashParams = new URLSearchParams(window.location.hash.slice(1));
+        const authError = hashParams.get("error_description") || hashParams.get("error_code");
+        if (authError) {
+          setError(`${authError}. Please request a new password reset link.`);
+          return;
+        }
+
         // First, let Supabase process the recovery token from the URL hash
         // This is important - Supabase needs time to create the session from the hash
         await new Promise(resolve => setTimeout(resolve, 1000));

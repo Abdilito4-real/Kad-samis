@@ -1,5 +1,3 @@
-import type ExcelJSType from "exceljs";
-
 /** Column headers exactly as they appear in the downloadable template. */
 export const ASSET_CSV_HEADERS = [
   "SN",
@@ -56,82 +54,6 @@ function findCell(record: Record<string, string>, ...names: string[]): string {
 }
 
 /**
- * Builds the downloadable import template as a real .xlsx workbook —
- * headers only, no sample/worked-example row, with the header row bold and
- * shaded. Plain CSV has no styling capability at all (it's just delimited
- * text), so "bold headers" requires an actual spreadsheet format; exceljs
- * is loaded dynamically so pages that only need CSV export (assets export
- * on /assets) never pay for pulling it into their bundle.
- */
-export async function buildAssetTemplateWorkbook(): Promise<Blob> {
-  const ExcelJS = (await import("exceljs")).default;
-  const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet("Assets");
-
-  // Assigning `columns` with a `header` per entry both writes row 1 and
-  // sets sensible column widths — no separate addRow() call, so there's no
-  // second row of sample data left behind.
-  sheet.columns = ASSET_CSV_HEADERS.map((header) => ({
-    header,
-    key: header,
-    width: Math.max(16, header.length + 4),
-  }));
-
-  const headerRow = sheet.getRow(1);
-  headerRow.font = { bold: true, color: { argb: "FF0F172A" } };
-  headerRow.eachCell((cell) => {
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDBEAFE" } };
-    cell.border = { bottom: { style: "thin", color: { argb: "FF94A3B8" } } };
-  });
-
-  const buffer = await workbook.xlsx.writeBuffer();
-  return new Blob([buffer], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
-}
-
-/** Reads an uploaded .xlsx (e.g. the filled-in template) into the same
- * header-keyed row shape `parseCSVWithHeader` produces, so both formats
- * feed the same `validateAssetRow` pipeline downstream. */
-export async function parseAssetWorkbook(file: File): Promise<Record<string, string>[]> {
-  const ExcelJS = (await import("exceljs")).default;
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(await file.arrayBuffer());
-  const sheet = workbook.worksheets[0];
-  if (!sheet) return [];
-
-  const cellToString = (value: ExcelJSType.CellValue): string => {
-    if (value === null || value === undefined) return "";
-    if (value instanceof Date) return value.toISOString();
-    if (typeof value === "object") {
-      if ("richText" in value) return (value.richText as Array<{ text: string }>).map((t) => t.text).join("");
-      if ("text" in value) return String((value as { text: unknown }).text ?? "");
-      if ("result" in value) return String((value as { result: unknown }).result ?? "");
-    }
-    return String(value).trim();
-  };
-
-  let headers: string[] = [];
-  const records: Record<string, string>[] = [];
-
-  sheet.eachRow((row, rowNumber) => {
-    const values = (row.values as ExcelJSType.CellValue[]).slice(1).map(cellToString);
-    if (rowNumber === 1) {
-      headers = values.map((h) => h.trim());
-      return;
-    }
-    if (values.every((v) => v.trim().length === 0)) return; // skip blank rows
-    const record: Record<string, string> = {};
-    headers.forEach((header, index) => {
-      record[header] = (values[index] ?? "").trim();
-    });
-    records.push(record);
-  });
-
-  return records;
-}
-
-/**
  * Validates and coerces one parsed CSV record. Category is resolved
  * client-side against the fetched category list so the API can receive a
  * clean category_id, same as the old single-asset form did.
@@ -155,8 +77,6 @@ export function validateAssetRow(
   const geolocationRaw = findCell(record, "Geolocation");
 
   if (!name) errors.push("Assets Name is required");
-  if (!assetNumber) errors.push("Assets ID or Number is required");
-
   let purchaseYear: number | null = null;
   if (yearRaw) {
     const parsed = Number(yearRaw);

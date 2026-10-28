@@ -26,8 +26,9 @@ export async function POST(request: Request) {
       return rateLimitResponse(rateLimit);
     }
 
+    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin).replace(/\/+$/, '');
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? `${process.env.NEXT_PUBLIC_APP_URL ?? ''}`}/auth/reset-password`,
+      redirectTo: `${siteUrl}/auth/reset-password`,
     });
 
     if (error) {
