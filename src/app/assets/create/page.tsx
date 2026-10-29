@@ -420,7 +420,7 @@ export default function ImportAssetsPage() {
                 categories.length > 0 ? (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {categories.map((category) => (
-                      <span key={category.id} className="max-w-full break-words rounded-lg border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-foreground">
+                      <span key={category.id} className="max-w-full break-words rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-1 text-xs font-medium text-violet-700 dark:text-violet-300">
                         {category.name}
                       </span>
                     ))}
