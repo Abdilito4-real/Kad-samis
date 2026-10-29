@@ -15,6 +15,7 @@ Create `.env.local`:
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_KEY=your_service_key
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_API_URL=http://localhost:3000
 ```
 
@@ -44,7 +45,7 @@ Open [http://localhost:3000](http://localhost:3000)
 
 1. Push code to GitHub
 2. Connect repository to Vercel
-3. Add environment variables in Vercel dashboard
+3. Add environment variables in Vercel dashboard, including `NEXT_PUBLIC_SITE_URL` set to the deployed HTTPS origin (for example, `https://your-domain.example`)
 4. Deploy
 
 ```bash
@@ -53,9 +54,9 @@ vercel deploy --prod
 
 ### Docker
 
-Build image:
+Build image, setting the public URL to the deployed HTTPS origin:
 ```bash
-docker build -t kad-samis:latest .
+docker build --build-arg NEXT_PUBLIC_SITE_URL=https://your-domain.example -t kad-samis:latest .
 ```
 
 Run container:
@@ -64,8 +65,17 @@ docker run -p 3000:3000 \
   -e NEXT_PUBLIC_SUPABASE_URL=your_url \
   -e NEXT_PUBLIC_SUPABASE_ANON_KEY=your_key \
   -e SUPABASE_SERVICE_KEY=your_service_key \
+  -e NEXT_PUBLIC_SITE_URL=https://your-domain.example \
   kad-samis:latest
 ```
+
+### Supabase Auth Redirects
+
+In Supabase Dashboard → Authentication → URL Configuration:
+
+- Set **Site URL** to the deployed HTTPS origin.
+- Add `https://your-domain.example/auth/reset-password` to **Redirect URLs**. Add `http://localhost:3000/auth/reset-password` separately for local development.
+- After changing `NEXT_PUBLIC_SITE_URL` in the hosting provider, redeploy so the client bundle uses the new value.
 
 ### Traditional VPS/Server
 

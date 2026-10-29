@@ -144,6 +144,7 @@ export default function AssetsPage() {
         asset.warranty_years ?? "",
         asset.status ?? "",
         asset.asset_categories?.[0]?.name ?? "",
+        asset.geolocation ?? "",
       ]),
     ];
 
@@ -151,9 +152,9 @@ export default function AssetsPage() {
     toast.success(`Exported ${assetItems.length} asset${assetItems.length === 1 ? "" : "s"}.`);
   };
 
-  // Super Admin doesn't edit assets directly — "View" takes them to the
-  // owning organization's page instead of the asset edit form. Falls back
-  // to the asset page itself if an asset is somehow missing its org link.
+  // Super Admin can add assets through bulk import but doesn't edit existing
+  // assets directly — "View" takes them to the owning organization's page.
+  // Falls back to the asset page if an asset is missing its org link.
   const assetLinkHref = (asset: any) =>
     isSuperAdmin && asset.organization_id ? `/admin/organizations/${asset.organization_id}` : `/assets/${asset.id}`;
 
@@ -174,14 +175,12 @@ export default function AssetsPage() {
               <p className="text-muted-foreground">Track each government asset from acquisition to disposal.</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {!isSuperAdmin && (
-                <Button variant="outline" size="sm" asChild>
-                  <Link href="/assets/create">
-                    <Upload className="mr-2 h-4 w-4" />
-                    Import Assets
-                  </Link>
-                </Button>
-              )}
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/assets/create">
+                  <Upload className="mr-2 h-4 w-4" />
+                  Import Assets
+                </Link>
+              </Button>
               <Button variant="outline" size="sm" onClick={handleExport} disabled={loading}>
                 <Download className="mr-2 h-4 w-4" />
                 Export

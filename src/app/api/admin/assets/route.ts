@@ -7,7 +7,7 @@ import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 interface BulkAssetRow {
   rowNumber: number;
-  assetNumber: string;
+  assetNumber?: string;
   name: string;
   make: string | null;
   purchaseYear: number | null;
@@ -16,6 +16,7 @@ interface BulkAssetRow {
   warrantyYears: number | null;
   status: string;
   categoryId: string;
+  geolocation: string | null;
 }
 
 interface SkippedRow {
@@ -122,7 +123,7 @@ export async function GET(req: Request) {
     let query = queryClient
       .from('assets')
       .select(
-        'id, asset_number, name, status, condition, make, purchase_year, purchase_value, warranty_years, created_at, organization_id, asset_categories(name)'
+        'id, asset_number, name, status, condition, make, purchase_year, purchase_value, warranty_years, geolocation, created_at, organization_id, asset_categories(name)'
       )
       .order('created_at', { ascending: false });
 
@@ -144,8 +145,8 @@ export async function GET(req: Request) {
   }
 }
 
-// Assets are created exclusively via CSV import now — this always inserts
-// a batch (a single-row import is just a batch of one). Each row is
+// Assets are created via spreadsheet import — this always inserts a batch
+// (a single-row import is just a batch of one). Each row is
 // re-validated server-side (required fields, enum values, category
 // existence, duplicate asset numbers — both within the file and against
 // what's already in the table) rather than trusting the client's own
@@ -166,12 +167,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (ctx.profile.role === 'super_admin') {
-      return NextResponse.json({ error: 'Super admins have read-only access to assets' }, { status: 403 });
-    }
-
-    if (!ctx.profile.organization_id) {
-      return NextResponse.json({ error: 'Your account has no organization assigned' }, { status: 403 });
+    const organizationId = ctx.profile.role === 'super_admin'
+      ? (typeof body?.organizationId === 'string' ? body.organizationId.trim() : '')
+      : ctx.profile.organization_id;
+    if (!organizationId) {
+      return NextResponse.json(
+        { error: ctx.profile.role === 'super_admin' ? 'Select an organization for these assets' : 'Your account has no organization assigned' },
+        { status: 403 }
+      );
     }
 
     const rateLimit = await checkRateLimit('bulk-import', ctx.user.id);
@@ -201,6 +204,44 @@ export async function POST(req: Request) {
     // the insert outright since auth.uid() comes back NULL.
     const db = serviceRoleClient ?? ctx.authClient ?? supabase;
 
+    if (ctx.profile.role === 'super_admin') {
+      const { data: organization, error: organizationError } = await db
+        .from('organizations')
+        .select('id')
+        .eq('id', organizationId)
+        .maybeSingle();
+      if (organizationError) {
+        return NextResponse.json({ error: organizationError.message }, { status: 500 });
+      }
+      if (!organization) {
+        return NextResponse.json({ error: 'Selected organization was not found' }, { status: 400 });
+      }
+    }
+
+    // Generate numbers in the database so concurrent imports cannot allocate
+    // the same ID. Preserve user-supplied numbers for existing workflows.
+    const reservedNumbers = new Set(
+      rows.map((row) => row.assetNumber?.trim()).filter((number): number is string => Boolean(number))
+    );
+    for (const row of rows) {
+      if (row.assetNumber?.trim()) {
+        row.assetNumber = row.assetNumber.trim();
+        continue;
+      }
+
+      let generatedNumber = '';
+      do {
+        const { data, error } = await db.rpc('generate_asset_number');
+        if (error || typeof data !== 'string') {
+          console.error('Asset number generation failed', error);
+          return NextResponse.json({ error: 'Unable to generate an asset number' }, { status: 500 });
+        }
+        generatedNumber = data;
+      } while (reservedNumbers.has(generatedNumber));
+      row.assetNumber = generatedNumber;
+      reservedNumbers.add(generatedNumber);
+    }
+
     // Validate category ids up front so a bad/renamed category doesn't
     // surface as an opaque insert error per-row.
     const categoryIds = Array.from(new Set(rows.map((r) => r.categoryId).filter(Boolean)));
@@ -216,7 +257,7 @@ export async function POST(req: Request) {
 
     // Existing asset numbers this batch collides with (asset_number is
     // globally unique, not just within the organization).
-    const candidateNumbers = Array.from(new Set(rows.map((r) => r.assetNumber).filter(Boolean)));
+    const candidateNumbers = Array.from(new Set(rows.map((r) => r.assetNumber ?? '').filter(Boolean)));
     const { data: existingAssets, error: existingError } = await db
       .from('assets')
       .select('asset_number')
@@ -233,29 +274,29 @@ export async function POST(req: Request) {
 
     for (const row of rows) {
       const reasons: string[] = [];
+      const assetNumber = row.assetNumber ?? '';
 
       if (!row.name?.trim()) reasons.push('Assets Name is required');
-      if (!row.assetNumber?.trim()) reasons.push('Assets ID or Number is required');
       if (!row.condition || !ASSET_CONDITIONS.includes(row.condition as any)) reasons.push('Condition is missing or invalid');
       if (row.status && !ASSET_STATUSES.includes(row.status as any)) reasons.push('Status is invalid');
       if (!row.categoryId || !validCategoryIdSet.has(row.categoryId)) reasons.push('Category is missing or unrecognized');
 
-      if (row.assetNumber) {
-        if (existingNumberSet.has(row.assetNumber)) {
-          reasons.push(`Asset number "${row.assetNumber}" already exists`);
-        } else if (seenInBatch.has(row.assetNumber)) {
-          reasons.push(`Duplicate asset number "${row.assetNumber}" elsewhere in this file`);
+      if (assetNumber) {
+        if (existingNumberSet.has(assetNumber)) {
+          reasons.push(`Asset number "${assetNumber}" already exists`);
+        } else if (seenInBatch.has(assetNumber)) {
+          reasons.push(`Duplicate asset number "${assetNumber}" elsewhere in this file`);
         }
       }
 
       if (reasons.length > 0) {
-        skipped.push({ rowNumber: row.rowNumber, assetNumber: row.assetNumber, reasons });
+        skipped.push({ rowNumber: row.rowNumber, assetNumber, reasons });
         continue;
       }
 
-      seenInBatch.add(row.assetNumber);
+      seenInBatch.add(assetNumber);
       toInsert.push({
-        asset_number: row.assetNumber,
+        asset_number: assetNumber,
         name: row.name,
         category_id: row.categoryId,
         condition: row.condition,
@@ -264,7 +305,8 @@ export async function POST(req: Request) {
         purchase_year: row.purchaseYear ?? null,
         purchase_value: row.purchaseValue ?? null,
         warranty_years: row.warrantyYears ?? null,
-        organization_id: ctx.profile.organization_id,
+        geolocation: row.geolocation || null,
+        organization_id: organizationId,
         created_by: ctx.user.id,
       });
     }

@@ -335,15 +335,22 @@ For technical support, contact the development team or create an issue in the re
 - [x] Database schema design
 - [x] Authentication setup
 - [x] Core UI components
-- [ ] Dashboard implementation
-- [ ] Asset registry module
-- [ ] Maintenance module
-- [ ] Inspection module
+- [x] Dashboard implementation
+- [x] Asset registry module
+- [x] Maintenance module
+- [x] Inspection module
 - [ ] Report generation
-- [ ] PWA capabilities enhancement
+- [x] PWA capabilities enhancement
 - [ ] Performance optimization
 - [ ] Production testing
 - [ ] Go-live deployment
+
+> 📍 **We are here.** Core workflows — dashboard, asset registry, maintenance/requests, inspections, and auth
+> (including passkeys, session persistence, and login lockout) — are built and security-hardened, and the app is
+> installable with push notifications and an offline fallback page. What's left before go-live: wiring report
+> generation into an actual UI (the CSV export helper already exists in `src/lib/reporting.ts` but isn't connected to
+> a page yet), a real automated test suite (lint/type-check run in CI, but no Jest/Playwright coverage yet), a
+> performance pass, and the production deployment itself.
 
 ## 🙏 Acknowledgments
 

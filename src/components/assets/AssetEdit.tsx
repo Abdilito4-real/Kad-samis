@@ -22,6 +22,7 @@ interface AssetEditProps {
     purchase_year: number | null;
     purchase_value: number | null;
     warranty_years: number | null;
+    geolocation: string | null;
   };
 }
 
@@ -40,6 +41,7 @@ export function AssetEdit({ asset }: AssetEditProps) {
     purchaseYear: asset.purchase_year !== null ? asset.purchase_year.toString() : "",
     purchaseValue: asset.purchase_value !== null ? asset.purchase_value.toString() : "",
     warrantyYears: asset.warranty_years !== null ? asset.warranty_years.toString() : "",
+    geolocation: asset.geolocation || "",
   };
 
   const handleSubmit = async (values: AssetFormValues) => {

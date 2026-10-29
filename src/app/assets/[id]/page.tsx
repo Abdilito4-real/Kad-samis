@@ -18,6 +18,7 @@ interface Asset {
   purchase_year: number | null;
   purchase_value: number | null;
   warranty_years: number | null;
+  geolocation: string | null;
 }
 
 export default function AssetDetailPage({ params }: { params: Promise<{ id: string }> }) {

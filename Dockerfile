@@ -10,6 +10,10 @@ COPY next.config.ts ./
 COPY tailwind.config.ts ./
 COPY postcss.config.js ./
 
+# Public URL is embedded in the client bundle during the Next.js build.
+ARG NEXT_PUBLIC_SITE_URL=http://localhost:3000
+ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
+
 # Install dependencies
 RUN npm install --legacy-peer-deps
 

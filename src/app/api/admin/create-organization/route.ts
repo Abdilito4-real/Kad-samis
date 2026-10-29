@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     const requestSupabase = getSupabaseFromRequest(req);
     const supabase = requestSupabase ?? (await createServerSideClient());
     const ctx = await getProfile(supabase, req);
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
     if (!ctx?.profile) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -76,7 +76,10 @@ export async function POST(req: Request) {
     }
 
     if (existingByName) {
-      return NextResponse.json({ error: 'Organization already exists', status: 409 }, { status: 409 });
+      return NextResponse.json(
+        { error: 'An organization with this name already exists. Check the organizations list or use a different name.' },
+        { status: 409 }
+      );
     }
 
     if (body.email) {
@@ -93,7 +96,10 @@ export async function POST(req: Request) {
       }
 
       if (existingByEmail) {
-        return NextResponse.json({ error: 'Organization already exists', status: 409 }, { status: 409 });
+        return NextResponse.json(
+          { error: 'An organization with this office email already exists. Check the organizations list or use a different email.' },
+          { status: 409 }
+        );
       }
     }
 
