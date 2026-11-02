@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RequestAssetDialog } from "@/components/requests/RequestAssetDialog";
 import { useAuth } from "@/components/auth-provider";
 import { createClient } from "@/lib/supabase/client";
+import { WarrantyIndicator } from "@/components/assets/WarrantyIndicator";
 
 interface AssetEditProps {
   asset: {
@@ -110,6 +111,12 @@ export function AssetEdit({ asset }: AssetEditProps) {
             <div>
               <CardTitle>Edit asset</CardTitle>
               <p className="text-sm text-muted-foreground">Update asset details or remove it from the register.</p>
+              <div className="mt-2">
+                <WarrantyIndicator purchaseYear={asset.purchase_year} warrantyYears={asset.warranty_years} />
+                {(!asset.purchase_year || asset.warranty_years == null) && (
+                  <p className="text-xs text-muted-foreground">Warranty status unavailable until purchase year and warranty duration are recorded.</p>
+                )}
+              </div>
             </div>
             <div className="flex flex-wrap gap-2">
               {canRequest && (

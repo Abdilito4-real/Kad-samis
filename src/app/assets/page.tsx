@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -11,12 +11,17 @@ import { Button } from "@/components/ui/button";
 import { ResponsiveGrid } from "@/components/layout/ResponsiveGrid";
 import { MetricCard } from "@/components/layout/MetricCard";
 import { ListRowSkeleton, MetricValueSkeleton } from "@/components/ui/skeletons";
-import { Upload, Download, Package2, ShieldCheck, Wrench, ArrowRightLeft } from "lucide-react";
+import { Upload, Download, Package2, ShieldCheck, Wrench, ShieldAlert, Search, X } from "lucide-react";
 import { RequestAssetDialog } from "@/components/requests/RequestAssetDialog";
 import { toCSV, downloadCSV } from "@/lib/csv";
 import { ASSET_CSV_HEADERS } from "@/lib/assetImport";
 import { logExportActivity } from "@/lib/logActivity";
+import { WarrantyIndicator } from "@/components/assets/WarrantyIndicator";
+import { assessWarranty } from "@/lib/warranty";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+
+const INITIAL_ASSET_LIMIT = 10;
 
 const STATUS_BADGE: Record<string, string> = {
   active: "bg-emerald-500/10 text-emerald-500",
@@ -34,6 +39,8 @@ export default function AssetsPage() {
   const [assets, setAssets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showAllAssets, setShowAllAssets] = useState(false);
   const router = useRouter();
   const { user } = useAuth();
   const isSuperAdmin = user?.roleId === "super_admin";
@@ -122,6 +129,25 @@ export default function AssetsPage() {
   };
 
   const assetItems = assets;
+  const filteredAssets = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return assetItems;
+
+    return assetItems.filter((asset) =>
+      [
+        asset.name,
+        asset.asset_number,
+        asset.status,
+        asset.condition,
+        asset.asset_categories?.[0]?.name,
+        asset.make,
+        asset.geolocation,
+      ].some((value) => String(value ?? "").toLowerCase().includes(query))
+    );
+  }, [assetItems, searchQuery]);
+  const visibleAssets = showAllAssets
+    ? filteredAssets
+    : filteredAssets.slice(0, INITIAL_ASSET_LIMIT);
 
   const handleExport = () => {
     if (assetItems.length === 0) {
@@ -191,7 +217,7 @@ export default function AssetsPage() {
               { title: "Registered assets", value: assetItems.length, icon: Package2, tone: "neutral" as const },
               { title: "In service", value: assetItems.filter((item) => item.status === "active").length, icon: ShieldCheck, tone: "emerald" as const },
               { title: "Maintenance", value: assetItems.filter((item) => item.status === "maintenance").length, icon: Wrench, tone: "amber" as const },
-              { title: "Recently added", value: assetItems.slice(0, 5).length, icon: ArrowRightLeft, tone: "sky" as const },
+              { title: "Out of warranty", value: assetItems.filter((item) => assessWarranty(item.purchase_year, item.warranty_years)?.status === "expired").length, icon: ShieldAlert, tone: "rose" as const },
             ].map((item) => (
               <MetricCard
                 key={item.title}
@@ -204,11 +230,46 @@ export default function AssetsPage() {
           </ResponsiveGrid>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Asset register</CardTitle>
-              <p className="text-sm text-muted-foreground">{isSuperAdmin ? "Read-only records across all organizations." : "Latest records with quick edit access."}</p>
+            <CardHeader className="gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle>Asset register</CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">{isSuperAdmin ? "Read-only records across all organizations." : "Latest records with quick edit access."}</p>
+              </div>
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                <div className="relative w-full sm:w-72">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    aria-label="Search assets"
+                    placeholder="Search name, asset ID, category…"
+                    value={searchQuery}
+                    onChange={(event) => {
+                      setSearchQuery(event.target.value);
+                      setShowAllAssets(false);
+                    }}
+                    className="pl-9 pr-9"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      aria-label="Clear asset search"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
+              {!loading && assetItems.length > 0 && (
+                <p className="mb-3 text-xs text-muted-foreground" aria-live="polite">
+                  {searchQuery.trim()
+                    ? `${visibleAssets.length === filteredAssets.length ? "Showing" : `Showing ${visibleAssets.length} of`} ${filteredAssets.length} matching asset${filteredAssets.length === 1 ? "" : "s"}`
+                    : `Showing ${visibleAssets.length} of ${assetItems.length} asset${assetItems.length === 1 ? "" : "s"}`}
+                </p>
+              )}
               <div className="overflow-hidden rounded-2xl border border-border">
                 <div className="hidden items-center gap-4 bg-muted/40 px-4 py-3 text-sm font-medium text-muted-foreground sm:grid sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
                   <span>Asset</span>
@@ -220,8 +281,12 @@ export default function AssetsPage() {
                   Array.from({ length: 5 }).map((_, index) => <ListRowSkeleton key={index} />)
                 ) : assetItems.length === 0 ? (
                   <div className="px-4 py-6 text-sm text-muted-foreground">No assets have been registered yet.</div>
+                ) : filteredAssets.length === 0 ? (
+                  <div className="px-4 py-6 text-sm text-muted-foreground">
+                    No assets match “{searchQuery.trim()}”.
+                  </div>
                 ) : (
-                  assetItems.map((asset) => (
+                  visibleAssets.map((asset) => (
                     <div
                       key={asset.id}
                       className="min-w-0 border-t border-border px-4 py-3 text-sm first:border-t-0 sm:grid sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center sm:gap-4"
@@ -229,7 +294,14 @@ export default function AssetsPage() {
                       <div className="flex min-w-0 items-start justify-between gap-3 sm:block">
                         <div className="min-w-0">
                           <div className="truncate font-medium">{asset.name}</div>
-                          <div className="truncate text-muted-foreground text-xs">{asset.asset_number}</div>
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                            <span className="truncate">{asset.asset_number}</span>
+                            <WarrantyIndicator
+                              compact
+                              purchaseYear={asset.purchase_year}
+                              warrantyYears={asset.warranty_years}
+                            />
+                          </div>
                         </div>
                         <div className="flex shrink-0 items-center gap-3 sm:hidden">
                           {canRequest && (
@@ -280,6 +352,17 @@ export default function AssetsPage() {
                   ))
                 )}
               </div>
+              {!loading && filteredAssets.length > INITIAL_ASSET_LIMIT && (
+                <div className="mt-4 flex justify-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowAllAssets((showingAll) => !showingAll)}
+                  >
+                    {showAllAssets ? "Show top 10" : `View all (${filteredAssets.length})`}
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </>

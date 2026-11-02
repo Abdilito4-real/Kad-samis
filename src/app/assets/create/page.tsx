@@ -29,6 +29,15 @@ type ImportResult = {
   skipped: Array<{ rowNumber: number; assetNumber: string; reasons: string[] }>;
 };
 
+type ImportStage = "choose" | "reading" | "validating" | "review" | "importing" | "complete";
+
+const IMPORT_STEPS = [
+  { label: "Select file", description: "Choose CSV or Excel" },
+  { label: "Read & validate", description: "Check data and categories" },
+  { label: "Review rows", description: "Fix any flagged rows" },
+  { label: "Import assets", description: "Save valid assets" },
+];
+
 export default function ImportAssetsPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -48,6 +57,8 @@ export default function ImportAssetsPage() {
   const [importing, setImporting] = useState(false);
   const [downloadingTemplate, setDownloadingTemplate] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
+  const [importStage, setImportStage] = useState<ImportStage>("choose");
+  const [importStageError, setImportStageError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isSuperAdmin) return;
@@ -80,6 +91,14 @@ export default function ImportAssetsPage() {
 
   const validRows = useMemo(() => parsedRows.filter((r) => r.errors.length === 0), [parsedRows]);
   const invalidRows = useMemo(() => parsedRows.filter((r) => r.errors.length > 0), [parsedRows]);
+  const activeImportStep =
+    importStage === "choose" || importStage === "reading"
+      ? 0
+      : importStage === "validating"
+        ? 1
+        : importStage === "review"
+          ? 2
+          : 3;
   const filteredOrganizations = useMemo(() => {
     const query = organizationSearch.trim().toLowerCase();
     return query
@@ -137,19 +156,27 @@ export default function ImportAssetsPage() {
     event.target.value = ""; // allow re-selecting the same file after a fix
     if (!file) return;
 
+    setResult(null);
+    setParsedRows([]);
+    setFileName(file.name);
+    setImportStage("reading");
+    setImportStageError(null);
+
     let cats: AssetCategoryOption[];
     try {
       cats = await ensureCategories();
-    } catch {
+    } catch (error) {
+      setImportStage("choose");
+      setImportStageError(error instanceof Error ? error.message : "Could not load asset categories.");
       return;
     }
     if (cats.length === 0) {
-      toast.error("No asset categories exist in the database yet. Apply the asset category seed migration, then try uploading again.");
+      const message = "No asset categories are configured. Configure asset categories before importing.";
+      setImportStage("choose");
+      setImportStageError(message);
+      toast.error(message);
       return;
     }
-
-    setResult(null);
-    setFileName(file.name);
 
     try {
       let records: Record<string, string>[];
@@ -169,13 +196,17 @@ export default function ImportAssetsPage() {
         records = parseCSVWithHeader(await file.text());
       }
       if (records.length === 0) {
-        toast.error("That file has no data rows.");
-        setParsedRows([]);
+        const message = "That file has no data rows.";
+        setImportStageError(message);
+        setImportStage("review");
+        toast.error(message);
         return;
       }
 
+      setImportStage("validating");
       const rows = records.map((record, index) => validateAssetRow(record, index + 1, cats));
       setParsedRows(rows);
+      setImportStage("review");
 
       const invalidCount = rows.filter((r) => r.errors.length > 0).length;
       if (invalidCount > 0) {
@@ -185,7 +216,10 @@ export default function ImportAssetsPage() {
       }
     } catch (error) {
       console.error("Import file parse failed", error);
-      toast.error(error instanceof Error ? error.message : "Unable to read that file. Make sure it's a CSV or Excel file.");
+      const message = error instanceof Error ? error.message : "Unable to read that file. Make sure it's a CSV or Excel file.";
+      setImportStage("choose");
+      setImportStageError(message);
+      toast.error(message);
     }
   };
 
@@ -196,6 +230,8 @@ export default function ImportAssetsPage() {
       return;
     }
     setImporting(true);
+    setImportStage("importing");
+    setImportStageError(null);
     try {
       const supabase = createClient();
       const { data: { session } } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
@@ -233,6 +269,7 @@ export default function ImportAssetsPage() {
 
       setResult(json);
       setParsedRows([]);
+      setImportStage("complete");
 
       if (json.created?.length) {
         toast.success(`Imported ${json.created.length} asset${json.created.length === 1 ? "" : "s"}.`);
@@ -241,7 +278,10 @@ export default function ImportAssetsPage() {
         toast.warning(`${json.skipped.length} row${json.skipped.length === 1 ? "" : "s"} could not be imported.`);
       }
     } catch (error: any) {
-      toast.error(error?.message || "Unable to import assets");
+      const message = error?.message || "Unable to import assets";
+      setImportStage("review");
+      setImportStageError(message);
+      toast.error(message);
     } finally {
       setImporting(false);
     }
@@ -277,7 +317,7 @@ export default function ImportAssetsPage() {
               <Download className="h-4 w-4" />
               Download Excel template
             </Button>
-            <Button type="button" onClick={() => fileInputRef.current?.click()} className="gap-2">
+            <Button type="button" onClick={() => fileInputRef.current?.click()} className="gap-2" disabled={importing}>
               <Upload className="h-4 w-4" />
               Upload filled-in file
             </Button>
@@ -355,6 +395,73 @@ export default function ImportAssetsPage() {
               )}
             </div>
           )}
+
+          <div className="rounded-2xl border border-border bg-muted/20 p-4" aria-live="polite">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold">Import process</p>
+              {fileName && <p className="max-w-full truncate text-xs text-muted-foreground">{fileName}</p>}
+            </div>
+            <ol className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {IMPORT_STEPS.map((step, index) => {
+                const complete = importStage === "complete" || index < activeImportStep;
+                const active = importStage !== "complete" && index === activeImportStep;
+
+                return (
+                  <li key={step.label} className="flex min-w-0 items-start gap-2">
+                    <span
+                      className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                        complete
+                          ? "bg-primary text-primary-foreground"
+                          : active
+                            ? "border-2 border-primary text-primary"
+                            : "border border-border text-muted-foreground"
+                      }`}
+                    >
+                      {complete ? <Check className="h-3.5 w-3.5" /> : index + 1}
+                    </span>
+                    <span className="min-w-0">
+                      <span className={`block truncate text-xs font-medium ${active ? "text-foreground" : "text-muted-foreground"}`}>
+                        {step.label}
+                      </span>
+                      <span className="mt-0.5 block text-[11px] text-muted-foreground">{step.description}</span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+            {importStage === "reading" || importStage === "validating" || importStage === "importing" ? (
+              <p className="mt-3 text-xs font-medium text-primary">
+                {importStage === "reading"
+                  ? "Reading selected file…"
+                  : importStage === "validating"
+                    ? "Validating asset rows…"
+                    : `Importing ${validRows.length} valid asset${validRows.length === 1 ? "" : "s"}…`}
+              </p>
+            ) : null}
+            {parsedRows.length > 0 ? (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs text-muted-foreground">
+                  {parsedRows.length} rows checked: {validRows.length} ready to import, {invalidRows.length} need attention.
+                </p>
+                <Button
+                  type="button"
+                  onClick={handleImport}
+                  disabled={validRows.length === 0 || importing || importStage === "complete"}
+                  isLoading={importing}
+                  loadingText="Importing..."
+                  className="gap-2 rounded-3xl px-6 py-3"
+                >
+                  Import {validRows.length} asset{validRows.length === 1 ? "" : "s"}
+                </Button>
+              </div>
+            ) : null}
+            {importStageError ? (
+              <p role="alert" className="mt-3 text-xs font-medium text-destructive">{importStageError}</p>
+            ) : null}
+            {importStage === "complete" ? (
+              <p className="mt-3 text-xs font-medium text-emerald-600">Import process complete.</p>
+            ) : null}
+          </div>
 
           <p className="text-sm text-muted-foreground">
             Leave “Assets ID or Number” blank to generate a unique asset number automatically. Status and Category cells in the Excel template have dropdowns.
@@ -464,18 +571,6 @@ export default function ImportAssetsPage() {
                 </div>
               )}
 
-              <div className="flex justify-end">
-                <Button
-                  type="button"
-                  onClick={handleImport}
-                  disabled={validRows.length === 0}
-                  isLoading={importing}
-                  loadingText="Importing..."
-                  className="gap-2 rounded-3xl px-6 py-3"
-                >
-                  Import {validRows.length} asset{validRows.length === 1 ? "" : "s"}
-                </Button>
-              </div>
             </div>
           )}
 
@@ -486,7 +581,10 @@ export default function ImportAssetsPage() {
                   <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" />
                   <div>
                     <p className="font-medium">{result.created.length} asset{result.created.length === 1 ? "" : "s"} imported</p>
-                    <p className="text-muted-foreground">{result.created.map((a) => a.asset_number).join(", ")}</p>
+                    <p className="text-muted-foreground">
+                      {result.created.slice(0, 10).map((asset) => asset.asset_number).join(", ")}
+                      {result.created.length > 10 ? `, and ${result.created.length - 10} more` : ""}
+                    </p>
                   </div>
                 </div>
               )}

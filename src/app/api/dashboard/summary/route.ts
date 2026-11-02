@@ -55,7 +55,7 @@ export async function GET(req: Request) {
           .limit(8),
         queryClient
           .from('assets')
-          .select('id, asset_number, name, status, condition, created_at', { count: 'exact' })
+          .select('id, asset_number, name, status, condition, purchase_year, warranty_years, created_at', { count: 'exact' })
           .eq('organization_id', organizationId)
           .order('created_at', { ascending: false })
           .limit(8),

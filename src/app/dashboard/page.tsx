@@ -27,6 +27,7 @@ import { MetricCardSkeleton, ListRowSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/components/auth-provider";
 import { createClient } from "@/lib/supabase/client";
 import { displayIdentity } from "@/lib/displayIdentity";
+import { WarrantyIndicator } from "@/components/assets/WarrantyIndicator";
 
 type Tone = "neutral" | "emerald" | "sky" | "amber" | "violet" | "rose";
 
@@ -796,6 +797,11 @@ export default function DashboardPage() {
                       {asset.condition ? (
                         <Badge className={`${conditionBadgeClass(asset.condition)} capitalize`}>{asset.condition}</Badge>
                       ) : null}
+                      <WarrantyIndicator
+                        compact
+                        purchaseYear={asset.purchase_year}
+                        warrantyYears={asset.warranty_years}
+                      />
                     </div>
                   </div>
                 ))}

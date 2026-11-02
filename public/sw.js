@@ -1,43 +1,72 @@
-// Kadsamis push service worker.
-// Hand-written on purpose — the workbox-window devDependency in
-// package.json isn't wired to anything, and this needs nothing beyond
-// push + notificationclick + the offline-page fallback below.
+// Kadsamis push service worker. It caches the offline fallback and static
+// app files only; navigations and API responses always use the network.
 
-const OFFLINE_CACHE = "kadsamis-offline-v1";
+const APP_CACHE = "kadsamis-app-v2";
 const OFFLINE_URL = "/offline";
+const STATIC_ASSETS = ["/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable.png", "/favicon.ico"];
 
 self.addEventListener("install", (event) => {
-  // Pre-cache the offline fallback page while we're (presumably) still
-  // online, so it's actually available from cache once we're not. Best
-  // effort: if this fetch itself fails (e.g. installing while offline),
-  // don't block activation over it — the fetch handler below already
-  // tolerates a cache miss.
   event.waitUntil(
     caches
-      .open(OFFLINE_CACHE)
-      .then((cache) => cache.add(OFFLINE_URL))
+      .open(APP_CACHE)
+      .then(async (cache) => {
+        await cache.add(OFFLINE_URL);
+        await Promise.all(STATIC_ASSETS.map((asset) => cache.add(asset).catch(() => undefined)));
+      })
       .catch(() => {})
   );
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches.open(APP_CACHE)
+      .then((cache) => cache.match(OFFLINE_URL))
+      .then((offlinePage) => {
+        if (!offlinePage) return;
+        return caches.keys().then((keys) =>
+          Promise.all(
+            keys
+              .filter((key) => key.startsWith("kadsamis-app-") && key !== APP_CACHE)
+              .map((key) => caches.delete(key))
+          )
+        );
+      })
+      .then(() => self.clients.claim())
+  );
 });
 
-// Everything except page navigations still falls straight through to the
-// network untouched — this worker doesn't cache or serve stale API
-// responses, JS/CSS chunks, or images, exactly as before. The one thing it
-// now catches is a failed *navigation* (opening/reloading a route directly
-// with no connection), which it answers with the pre-cached offline page
-// instead of the browser's default "no internet" error.
 self.addEventListener("fetch", (event) => {
-  if (event.request.mode !== "navigate") return;
+  const request = event.request;
+  const url = new URL(request.url);
+
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request).catch(() =>
+        caches.match(OFFLINE_URL).then((cached) => cached || Response.error())
+      )
+    );
+    return;
+  }
+
+  if (request.method !== "GET" || url.origin !== self.location.origin) return;
+
+  const isStaticAsset =
+    url.pathname.startsWith("/_next/static/") ||
+    url.pathname.startsWith("/images/") ||
+    STATIC_ASSETS.includes(url.pathname);
+  if (!isStaticAsset) return;
 
   event.respondWith(
-    fetch(event.request).catch(() =>
-      caches.match(OFFLINE_URL).then((cached) => cached || Response.error())
-    )
+    fetch(request)
+      .then((response) => {
+        if (response.ok) {
+          const copy = response.clone();
+          event.waitUntil(caches.open(APP_CACHE).then((cache) => cache.put(request, copy)));
+        }
+        return response;
+      })
+      .catch(async () => (await caches.match(request)) || Response.error())
   );
 });
 

@@ -9,6 +9,7 @@ import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, Plugin } from 'chart.js';
 import { TrendingUp, AlertTriangle, CheckCircle, Search, Package, Info, PieChart } from 'lucide-react';
 import { toast } from 'sonner';
+import { WarrantyIndicator } from '@/components/assets/WarrantyIndicator';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -128,6 +129,8 @@ type AssetMetric = {
   currentValue: number;
   accumulatedDepreciation: number;
   condition?: string;
+  purchaseYear?: number | null;
+  warrantyYears?: number | null;
 };
 
 type Statistics = {
@@ -509,7 +512,14 @@ export default function OrganizationStatistics({ orgId }: { orgId: string }) {
                       <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${conditionStyle.bar}`} aria-hidden />
                       <span className="min-w-0 truncate text-sm font-medium">{asset.name}</span>
                     </div>
-                    <Badge className={`${conditionStyle.badge} shrink-0`}>{asset.condition || 'Unknown'}</Badge>
+                      <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+                        <Badge className={`${conditionStyle.badge}`}>{asset.condition || 'Unknown'}</Badge>
+                        <WarrantyIndicator
+                          compact
+                          purchaseYear={asset.purchaseYear}
+                          warrantyYears={asset.warrantyYears}
+                        />
+                      </div>
                   </div>
                   <div className="mt-2.5 grid grid-cols-3 gap-2 text-xs">
                     <div>
