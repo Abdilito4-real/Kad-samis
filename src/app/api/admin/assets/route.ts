@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { createServerSideClient } from '@/lib/supabase/server';
-import { writeAudit } from '@/lib/supabase/serverHelpers';
+import { writeAssetChangeNotifications, writeAudit } from '@/lib/supabase/serverHelpers';
 import { ASSET_CONDITIONS, ASSET_STATUSES } from '@/lib/assetImport';
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
@@ -215,11 +215,12 @@ export async function POST(req: Request) {
     // connection whenever there's no session cookie, and RLS would reject
     // the insert outright since auth.uid() comes back NULL.
     const db = serviceRoleClient ?? ctx.authClient ?? supabase;
+    let organizationName = '';
 
     if (ctx.profile.role === 'super_admin') {
       const { data: organization, error: organizationError } = await db
         .from('organizations')
-        .select('id')
+        .select('id, name')
         .eq('id', organizationId)
         .maybeSingle();
       if (organizationError) {
@@ -228,7 +229,19 @@ export async function POST(req: Request) {
       if (!organization) {
         return NextResponse.json({ error: 'Selected organization was not found' }, { status: 400 });
       }
+      organizationName = organization.name;
+    } else {
+      const { data: organization, error: organizationError } = await db
+        .from('organizations')
+        .select('name')
+        .eq('id', organizationId)
+        .maybeSingle();
+      if (organizationError) {
+        console.error('Asset import organization lookup failed', organizationError);
+      }
+      organizationName = organization?.name ?? '';
     }
+    organizationName ||= 'the organization';
 
     // Generate numbers in the database so concurrent imports cannot allocate
     // the same ID. Preserve user-supplied numbers for existing workflows.
@@ -259,13 +272,14 @@ export async function POST(req: Request) {
     const categoryIds = Array.from(new Set(rows.map((r) => r.categoryId).filter(Boolean)));
     const { data: validCategories, error: categoryError } = await db
       .from('asset_categories')
-      .select('id')
+      .select('id, name')
       .in('id', categoryIds.length ? categoryIds : ['00000000-0000-0000-0000-000000000000']);
 
     if (categoryError) {
       return NextResponse.json({ error: categoryError.message }, { status: 500 });
     }
     const validCategoryIdSet = new Set((validCategories ?? []).map((c: any) => c.id));
+    const categoryNameById = new Map((validCategories ?? []).map((category: { id: string; name: string }) => [category.id, category.name]));
 
     // Existing asset numbers this batch collides with (asset_number is
     // globally unique, not just within the organization).
@@ -346,6 +360,19 @@ export async function POST(req: Request) {
       } catch (err) {
         console.warn('Failed to write asset import audit:', err);
       }
+
+      const assetDetails = created.slice(0, 5).map((asset) => {
+        const category = categoryNameById.get(asset.category_id) ?? 'Unknown category';
+        return `${asset.asset_number} — ${asset.name} (${category}; ${asset.condition}; ${asset.status})`;
+      });
+      const remainingCount = created.length - assetDetails.length;
+      const remainingDetails = remainingCount > 0 ? `; and ${remainingCount} more` : '';
+      await writeAssetChangeNotifications(
+        db,
+        organizationId,
+        `Assets added to ${organizationName}`,
+        `${created.length} asset${created.length === 1 ? '' : 's'} added to ${organizationName}: ${assetDetails.join('; ')}${remainingDetails}.`
+      );
     }
 
     return NextResponse.json({ created, skipped });

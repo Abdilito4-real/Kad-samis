@@ -1,7 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { createServerSideClient } from '@/lib/supabase/server';
-import { getProfile, getSupabaseFromRequest, writeAudit } from '@/lib/supabase/serverHelpers';
+import {
+  getProfile,
+  getServiceRoleClient,
+  getSupabaseFromRequest,
+  writeAssetChangeNotifications,
+  writeAudit,
+} from '@/lib/supabase/serverHelpers';
 
 const ASSET_COLUMNS =
   'id, asset_number, name, category_id, condition, status, make, purchase_year, purchase_value, warranty_years, geolocation, organization_id, created_at, updated_at';
@@ -153,7 +159,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
     const { data: existing, error: fetchError } = await supabase
       .from('assets')
-      .select('id, organization_id')
+      .select('id, asset_number, name, category_id, condition, status, organization_id')
       .eq('id', id)
       .maybeSingle();
 
@@ -165,6 +171,18 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     }
     if (existing.organization_id !== ctx.profile.organization_id) {
       return NextResponse.json({ error: 'You do not have access to this asset' }, { status: 403 });
+    }
+
+    const notificationClient = getServiceRoleClient(supabase);
+    const [{ data: category, error: categoryError }, { data: organization, error: organizationError }] = await Promise.all([
+      supabase.from('asset_categories').select('name').eq('id', existing.category_id).maybeSingle(),
+      supabase.from('organizations').select('name').eq('id', existing.organization_id).maybeSingle(),
+    ]);
+    if (categoryError) {
+      console.warn('Deleted asset category lookup failed', categoryError.message);
+    }
+    if (organizationError) {
+      console.warn('Deleted asset organization lookup failed', organizationError.message);
     }
 
     const { error } = await supabase.from('assets').delete().eq('id', id);
@@ -184,6 +202,15 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     } catch (err) {
       console.warn('Failed to write asset delete audit:', err);
     }
+
+    const organizationName = organization?.name ?? 'the organization';
+    const categoryName = category?.name ?? 'Unknown category';
+    await writeAssetChangeNotifications(
+      notificationClient,
+      existing.organization_id,
+      `Asset deleted from ${organizationName}`,
+      `Asset ${existing.asset_number} — ${existing.name} was deleted from ${organizationName}. Category: ${categoryName}; condition: ${existing.condition}; status: ${existing.status}.`
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {

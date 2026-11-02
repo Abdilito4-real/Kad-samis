@@ -406,6 +406,57 @@ export async function writeNotifications(
   }
 }
 
+export async function writeAssetChangeNotifications(
+  supabaseClient: any,
+  organizationId: string,
+  title: string,
+  message: string
+) {
+  try {
+    if (!(process.env.NEXT_PUBLIC_SUPABASE_URL && (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY))) {
+      console.error('Asset notifications require the Supabase service role key');
+      return;
+    }
+
+    const writer = getServiceRoleClient(supabaseClient);
+    const [organizationRecipients, superAdmins] = await Promise.all([
+      writer.from('profiles').select('id').eq('organization_id', organizationId),
+      writer.from('profiles').select('id').eq('role', 'super_admin'),
+    ]);
+
+    if (organizationRecipients.error || superAdmins.error) {
+      console.error('Asset notification recipient lookup failed', {
+        organizationError: organizationRecipients.error?.message,
+        superAdminError: superAdmins.error?.message,
+      });
+      return;
+    }
+
+    const recipientIds = Array.from(
+      new Set([
+        ...(organizationRecipients.data ?? []).map((profile: { id: string }) => profile.id),
+        ...(superAdmins.data ?? []).map((profile: { id: string }) => profile.id),
+      ])
+    );
+    if (recipientIds.length === 0) {
+      console.warn('Asset notification has no recipients', { organizationId });
+      return;
+    }
+
+    await writeNotifications(
+      writer,
+      recipientIds.map((userId) => ({
+        user_id: userId,
+        type: 'asset',
+        title,
+        message,
+      }))
+    );
+  } catch (error) {
+    console.error('Asset change notification delivery failed', error);
+  }
+}
+
 export async function getSuperAdminEmails(): Promise<string[]> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
