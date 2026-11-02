@@ -21,7 +21,6 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { ResponsiveGrid } from "@/components/layout/ResponsiveGrid";
 import { MetricCard } from "@/components/layout/MetricCard";
 import { MetricCardSkeleton, ListRowSkeleton } from "@/components/ui/skeletons";
@@ -388,7 +387,7 @@ export default function DashboardPage() {
         },
         {
           title: "Assets",
-          value: assetItems.length ?? 0,
+          value: summary?.assetsCount ?? 0,
           detail: "Assets in this organization",
           icon: Package,
           tone: "sky",
@@ -499,12 +498,6 @@ export default function DashboardPage() {
           {/* Was a separate "Profile" box repeating the same name already in the
               heading above, plus a role pill. Collapsed into one compact badge. */}
           <div className="flex shrink-0 flex-wrap items-center gap-3 self-start">
-            <Button asChild size="sm" className="gap-2">
-              <Link href="/assets">
-                <Package className="h-4 w-4" />
-                Asset Register
-              </Link>
-            </Button>
             {(isSuperAdmin || Boolean(user?.organizationId)) && (
               <Link
                 href="/assets/create"
