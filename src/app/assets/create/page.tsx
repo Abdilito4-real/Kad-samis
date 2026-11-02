@@ -90,7 +90,7 @@ export default function ImportAssetsPage() {
   const ensureCategories = async (): Promise<AssetCategoryOption[]> => {
     if (categoriesLoaded) return categories;
     try {
-      const response = await fetch("/api/admin/asset-categories");
+      const response = await fetch("/api/admin/asset-categories", { cache: "no-store" });
       const json = await response.json();
       if (!response.ok) throw new Error(json?.error || "Unable to load asset categories");
       const loaded: AssetCategoryOption[] = json.categories ?? [];
@@ -144,7 +144,7 @@ export default function ImportAssetsPage() {
       return;
     }
     if (cats.length === 0) {
-      toast.error("No asset categories are configured yet. Ask a super admin to add one first.");
+      toast.error("No asset categories exist in the database yet. Apply the asset category seed migration, then try uploading again.");
       return;
     }
 
@@ -215,7 +215,6 @@ export default function ImportAssetsPage() {
             rowNumber: r.rowNumber,
             assetNumber: r.assetNumber,
             name: r.name,
-            make: r.make,
             purchaseYear: r.purchaseYear,
             purchaseValue: r.purchaseValue,
             condition: r.condition,
@@ -371,11 +370,8 @@ export default function ImportAssetsPage() {
               <div className="mt-3 flex flex-wrap gap-2">
                 {ASSET_CONDITIONS.map((condition) => {
                   const tone = {
-                    excellent: "bg-emerald-500/10 text-emerald-700 ring-emerald-500/20 dark:text-emerald-300",
-                    good: "bg-sky-500/10 text-sky-700 ring-sky-500/20 dark:text-sky-300",
-                    fair: "bg-amber-500/10 text-amber-700 ring-amber-500/20 dark:text-amber-300",
-                    poor: "bg-orange-500/10 text-orange-700 ring-orange-500/20 dark:text-orange-300",
-                    damaged: "bg-rose-500/10 text-rose-700 ring-rose-500/20 dark:text-rose-300",
+                    serviceable: "bg-emerald-500/10 text-emerald-700 ring-emerald-500/20 dark:text-emerald-300",
+                    unserviceable: "bg-rose-500/10 text-rose-700 ring-rose-500/20 dark:text-rose-300",
                   }[condition] ?? "bg-muted text-muted-foreground ring-border";
 
                   return (

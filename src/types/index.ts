@@ -40,7 +40,7 @@ export interface Asset {
   purchaseYear: number | null;
   purchaseValue: number | null;
   warrantyYears: number | null;
-  condition: "excellent" | "good" | "fair" | "poor" | "damaged";
+  condition: "serviceable" | "unserviceable";
   status: "active" | "inactive" | "disposal" | "maintenance" | "archived";
   organizationId: string | null;
   createdAt: string;

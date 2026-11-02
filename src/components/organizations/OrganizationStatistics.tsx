@@ -154,11 +154,8 @@ const TONE_STYLES: Record<Tone, { rail: string; chip: string; icon: string }> = 
 // color and a hex value for the "current condition" accent — so the
 // condition drives color everywhere it's shown instead of just the badge.
 const CONDITION_STYLES: Record<string, { badge: string; bar: string; hex: string }> = {
-  excellent: { badge: 'bg-emerald-500/10 text-emerald-500', bar: 'bg-emerald-500', hex: '#10b981' },
-  good: { badge: 'bg-sky-500/10 text-sky-500', bar: 'bg-sky-500', hex: '#0ea5e9' },
-  fair: { badge: 'bg-amber-500/10 text-amber-600', bar: 'bg-amber-500', hex: '#f59e0b' },
-  poor: { badge: 'bg-orange-500/10 text-orange-500', bar: 'bg-orange-500', hex: '#f97316' },
-  damaged: { badge: 'bg-rose-500/10 text-rose-500', bar: 'bg-rose-500', hex: '#f43f5e' },
+  serviceable: { badge: 'bg-emerald-500/10 text-emerald-500', bar: 'bg-emerald-500', hex: '#10b981' },
+  unserviceable: { badge: 'bg-rose-500/10 text-rose-500', bar: 'bg-rose-500', hex: '#f43f5e' },
 };
 const FALLBACK_CONDITION = { badge: 'bg-muted text-muted-foreground', bar: 'bg-slate-400', hex: '#94a3b8' };
 

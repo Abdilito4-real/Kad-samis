@@ -28,10 +28,12 @@ export async function buildAssetImportWorkbook(categoryNames: string[]): Promise
     `Options!$C$2:$C$${ASSET_STATUSES.length + 1}`,
     'AssetStatuses'
   );
-  workbook.definedNames.add(
-    `Options!$A$2:$A$${categoryNames.length + 1}`,
-    'AssetCategories'
-  );
+  if (categoryNames.length > 0) {
+    workbook.definedNames.add(
+      `Options!$A$2:$A$${categoryNames.length + 1}`,
+      'AssetCategories'
+    );
+  }
 
   sheet.columns = ASSET_CSV_HEADERS.map((header) => ({
     header,
@@ -55,7 +57,7 @@ export async function buildAssetImportWorkbook(categoryNames: string[]): Promise
       errorTitle: 'Invalid condition',
       error: 'Select a condition from the dropdown list.',
     };
-    sheet.getCell(`I${rowNumber}`).dataValidation = {
+    sheet.getCell(`H${rowNumber}`).dataValidation = {
       type: 'list',
       allowBlank: true,
       formulae: ['AssetStatuses'],
@@ -63,14 +65,16 @@ export async function buildAssetImportWorkbook(categoryNames: string[]): Promise
       errorTitle: 'Invalid status',
       error: 'Select a status from the dropdown list.',
     };
-    sheet.getCell(`J${rowNumber}`).dataValidation = {
-      type: 'list',
-      allowBlank: false,
-      formulae: ['AssetCategories'],
-      showErrorMessage: true,
-      errorTitle: 'Invalid category',
-      error: 'Select a category from the dropdown list.',
-    };
+    if (categoryNames.length > 0) {
+      sheet.getCell(`I${rowNumber}`).dataValidation = {
+        type: 'list',
+        allowBlank: false,
+        formulae: ['AssetCategories'],
+        showErrorMessage: true,
+        errorTitle: 'Invalid category',
+        error: 'Select a category from the dropdown list.',
+      };
+    }
   }
 
   return Buffer.from(await workbook.xlsx.writeBuffer());

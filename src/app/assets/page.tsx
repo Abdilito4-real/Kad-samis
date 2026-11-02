@@ -26,11 +26,8 @@ const STATUS_BADGE: Record<string, string> = {
 };
 
 const CONDITION_BADGE: Record<string, string> = {
-  excellent: "bg-emerald-500/10 text-emerald-500",
-  good: "bg-sky-500/10 text-sky-500",
-  fair: "bg-amber-500/10 text-amber-600",
-  poor: "bg-orange-500/10 text-orange-500",
-  damaged: "bg-rose-500/10 text-rose-500",
+  serviceable: "bg-emerald-500/10 text-emerald-500",
+  unserviceable: "bg-rose-500/10 text-rose-500",
 };
 
 export default function AssetsPage() {
@@ -136,12 +133,11 @@ export default function AssetsPage() {
       [...ASSET_CSV_HEADERS],
       ...assetItems.map((asset, index) => [
         index + 1,
+        asset.asset_number ?? "",
         asset.name ?? "",
-        asset.make ?? "",
         asset.purchase_year ?? "",
         asset.purchase_value ?? "",
         asset.condition ?? "",
-        asset.asset_number ?? "",
         asset.warranty_years ?? "",
         asset.status ?? "",
         asset.asset_categories?.[0]?.name ?? "",

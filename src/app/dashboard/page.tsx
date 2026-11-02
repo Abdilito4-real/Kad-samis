@@ -77,11 +77,8 @@ const STATUS_BADGE: Record<string, string> = {
 };
 
 const CONDITION_BADGE: Record<string, string> = {
-  excellent: "bg-emerald-500/10 text-emerald-500",
-  good: "bg-sky-500/10 text-sky-500",
-  fair: "bg-amber-500/10 text-amber-600",
-  poor: "bg-orange-500/10 text-orange-500",
-  damaged: "bg-rose-500/10 text-rose-500",
+  serviceable: "bg-emerald-500/10 text-emerald-500",
+  unserviceable: "bg-rose-500/10 text-rose-500",
 };
 
 const statusBadgeClass = (status?: string) => STATUS_BADGE[(status || "").toLowerCase()] || "bg-muted text-muted-foreground";

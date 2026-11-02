@@ -34,7 +34,7 @@ const defaultValues: AssetFormValues = {
   assetNumber: "",
   name: "",
   categoryId: "",
-  condition: "good",
+  condition: "serviceable",
   status: "active",
   make: "",
   purchaseYear: "",

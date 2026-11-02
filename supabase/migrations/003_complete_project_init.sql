@@ -21,7 +21,7 @@ END$$;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'asset_condition') THEN
-    CREATE TYPE asset_condition AS ENUM ('excellent', 'good', 'fair', 'poor', 'damaged');
+    CREATE TYPE asset_condition AS ENUM ('serviceable', 'unserviceable');
   END IF;
 END$$;
 
@@ -277,7 +277,7 @@ CREATE TABLE IF NOT EXISTS assets (
   current_value DECIMAL(15, 2),
   depreciation_rate DECIMAL(5, 2),
   warranty_expiry DATE,
-  condition asset_condition DEFAULT 'good',
+  condition asset_condition DEFAULT 'serviceable',
   status asset_status DEFAULT 'active',
   funding_source TEXT,
   supplier_id UUID,

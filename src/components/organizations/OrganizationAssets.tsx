@@ -92,11 +92,8 @@ export default function OrganizationAssets({ orgId }: { orgId: string }) {
   });
 
   const conditionColor: Record<string, string> = {
-    excellent: 'bg-emerald-500/10 text-emerald-500',
-    good: 'bg-sky-500/10 text-sky-500',
-    fair: 'bg-amber-500/10 text-amber-600',
-    poor: 'bg-orange-500/10 text-orange-500',
-    damaged: 'bg-rose-500/10 text-rose-500',
+    serviceable: 'bg-emerald-500/10 text-emerald-500',
+    unserviceable: 'bg-rose-500/10 text-rose-500',
   };
 
   const statusColor: Record<string, string> = {
@@ -133,11 +130,8 @@ export default function OrganizationAssets({ orgId }: { orgId: string }) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Conditions</SelectItem>
-            <SelectItem value="excellent">Excellent</SelectItem>
-            <SelectItem value="good">Good</SelectItem>
-            <SelectItem value="fair">Fair</SelectItem>
-            <SelectItem value="poor">Poor</SelectItem>
-            <SelectItem value="damaged">Damaged</SelectItem>
+            <SelectItem value="serviceable">Serviceable</SelectItem>
+            <SelectItem value="unserviceable">Unserviceable</SelectItem>
           </SelectContent>
         </Select>
       </div>

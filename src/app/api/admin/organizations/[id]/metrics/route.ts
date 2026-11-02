@@ -89,11 +89,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         return totalOriginal > 0 ? Number(((totalDepreciation / totalOriginal) * 100).toFixed(2)) : 0;
       })(),
       assetsByCondition: {
-        excellent: assetMetrics.filter((a) => a.condition === 'excellent').length,
-        good: assetMetrics.filter((a) => a.condition === 'good').length,
-        fair: assetMetrics.filter((a) => a.condition === 'fair').length,
-        poor: assetMetrics.filter((a) => a.condition === 'poor').length,
-        damaged: assetMetrics.filter((a) => a.condition === 'damaged').length,
+        serviceable: assetMetrics.filter((a) => a.condition === 'serviceable').length,
+        unserviceable: assetMetrics.filter((a) => a.condition === 'unserviceable').length,
       },
     };
 

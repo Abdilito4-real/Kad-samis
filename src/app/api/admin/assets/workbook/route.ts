@@ -34,11 +34,9 @@ export async function GET(req: Request) {
       console.error('Asset template category lookup failed', categoryError);
       return NextResponse.json({ error: 'Unable to load asset categories' }, { status: 500 });
     }
-    if (!categories?.length) {
-      return NextResponse.json({ error: 'No asset categories are configured' }, { status: 400 });
-    }
-
-    const buffer = await buildAssetImportWorkbook(categories.map((category: { name: string }) => category.name));
+    const buffer = await buildAssetImportWorkbook(
+      (categories ?? []).map((category: { name: string }) => category.name)
+    );
     return new Response(new Uint8Array(buffer), {
       headers: {
         'Content-Type': EXCEL_MIME,

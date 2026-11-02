@@ -9,7 +9,7 @@ interface BulkAssetRow {
   rowNumber: number;
   assetNumber?: string;
   name: string;
-  make: string | null;
+  make?: string | null;
   purchaseYear: number | null;
   purchaseValue: number | null;
   condition: string;

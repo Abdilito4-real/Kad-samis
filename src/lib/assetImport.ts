@@ -1,19 +1,18 @@
 /** Column headers exactly as they appear in the downloadable template. */
 export const ASSET_CSV_HEADERS = [
   "SN",
+  "Assets ID or Number",
   "Assets Name",
-  "Make",
   "Year",
   "Purchase Value",
   "Condition",
-  "Assets ID or Number",
   "Warranty Years",
   "Status",
   "Category",
   "Geolocation",
 ] as const;
 
-export const ASSET_CONDITIONS = ["excellent", "good", "fair", "poor", "damaged"] as const;
+export const ASSET_CONDITIONS = ["serviceable", "unserviceable"] as const;
 export const ASSET_STATUSES = ["active", "inactive", "maintenance", "disposal", "archived"] as const;
 
 export type AssetCondition = (typeof ASSET_CONDITIONS)[number];
@@ -29,7 +28,6 @@ export interface ParsedAssetRow {
   rowNumber: number; // 1-based, matches the CSV data row (header excluded)
   assetNumber: string;
   name: string;
-  make: string | null;
   purchaseYear: number | null;
   purchaseValue: number | null;
   condition: AssetCondition | null;
@@ -67,7 +65,6 @@ export function validateAssetRow(
 
   const name = findCell(record, "Assets Name", "Asset Name", "Name");
   const assetNumber = findCell(record, "Assets ID or Number", "Assets ID or number", "Asset Number", "Asset ID");
-  const make = findCell(record, "Make") || null;
   const yearRaw = findCell(record, "Year");
   const valueRaw = findCell(record, "Purchase Value");
   const conditionRaw = findCell(record, "Condition");
@@ -147,7 +144,6 @@ export function validateAssetRow(
     rowNumber,
     assetNumber,
     name,
-    make,
     purchaseYear,
     purchaseValue,
     condition,
