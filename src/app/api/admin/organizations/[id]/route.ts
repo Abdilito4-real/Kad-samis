@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerSideClient } from '@/lib/supabase/server';
-import { getProfile as getAuthenticatedProfile, getSupabaseFromRequest } from '@/lib/supabase/serverHelpers';
+import { getProfile as getAuthenticatedProfile, getSupabaseFromRequest, writeAudit } from '@/lib/supabase/serverHelpers';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -55,7 +55,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const ctx = await getAuthenticatedProfile(supabase, req);
     if (!ctx?.profile) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     if (ctx.profile.role === 'super_admin') {
-      return NextResponse.json({ error: 'Super admins have read-only access to organizations' }, { status: 403 });
+      return NextResponse.json({ error: 'General Admins have read-only access to organizations' }, { status: 403 });
+    }
+
+    const { data: existingOrganization, error: existingError } = await supabase
+      .from('organizations')
+      .select('id, name')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (existingError) {
+      return NextResponse.json({ error: existingError.message }, { status: 500 });
+    }
+    if (!existingOrganization) {
+      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
     }
 
     const { data: organization, error } = await supabase
@@ -68,6 +81,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    await writeAudit(supabase, req, {
+      action: 'update',
+      table_name: 'organizations',
+      record_id: id,
+      old_values: existingOrganization,
+      new_values: organization,
+      user_id: ctx.user.id,
+    });
 
     return NextResponse.json({ organization });
   } catch (error) {
@@ -91,7 +113,20 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     const ctx = await getAuthenticatedProfile(supabase, req);
     if (!ctx?.profile) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     if (ctx.profile.role === 'super_admin') {
-      return NextResponse.json({ error: 'Super admins have read-only access to organizations' }, { status: 403 });
+      return NextResponse.json({ error: 'General Admins have read-only access to organizations' }, { status: 403 });
+    }
+
+    const { data: existingOrganization, error: existingError } = await supabase
+      .from('organizations')
+      .select('id, name')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (existingError) {
+      return NextResponse.json({ error: existingError.message }, { status: 500 });
+    }
+    if (!existingOrganization) {
+      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
     }
 
     // Delete in proper order to avoid FK constraint violations
@@ -123,6 +158,15 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
       console.error('Delete error:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    await writeAudit(supabase, req, {
+      action: 'delete',
+      table_name: 'organizations',
+      record_id: id,
+      old_values: existingOrganization,
+      new_values: {},
+      user_id: ctx.user.id,
+    });
 
     return NextResponse.json({ success: true, message: 'Organization and all related records deleted successfully' });
   } catch (error: any) {

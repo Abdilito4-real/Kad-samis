@@ -126,7 +126,7 @@ export default function QuickActions({
 
   const handleDeactivate = async () => {
     if (isSuperAdmin) {
-      toast.error('Super admins have read-only access to organizations');
+      toast.error('General Admins have read-only access to organizations');
       return;
     }
 
@@ -154,7 +154,7 @@ export default function QuickActions({
 
   const handleDelete = async () => {
     if (isSuperAdmin) {
-      toast.error('Super admins have read-only access to organizations');
+      toast.error('General Admins have read-only access to organizations');
       return;
     }
 

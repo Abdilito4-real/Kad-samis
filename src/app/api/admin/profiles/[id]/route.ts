@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerSideClient } from '@/lib/supabase/server';
-import { getProfile, getSupabaseFromRequest, isValidUuid } from '@/lib/supabase/serverHelpers';
+import { getProfile, getSupabaseFromRequest, isValidUuid, writeAudit } from '@/lib/supabase/serverHelpers';
 
 // Fields callers are allowed to change here. Kept to an explicit allowlist
 // rather than spreading the raw request body straight into the update —
@@ -48,6 +48,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ error: 'No editable fields provided' }, { status: 400 });
     }
 
+    const { data: existingProfile, error: existingError } = await supabase
+      .from('profiles')
+      .select('id, email, username, role, organization_id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (existingError) {
+      return NextResponse.json({ error: existingError.message }, { status: 500 });
+    }
+    if (!existingProfile) {
+      return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+    }
+
     if (typeof updatePayload.username === 'string') {
       const trimmed = updatePayload.username.trim();
       updatePayload.username = trimmed.length ? trimmed : null;
@@ -64,6 +77,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       const message = (error as any)?.code === '23505' ? 'That username is already taken' : error.message;
       return NextResponse.json({ error: message }, { status: (error as any)?.code === '23505' ? 409 : 500 });
     }
+
+    await writeAudit(supabase, req, {
+      action: 'update',
+      table_name: 'profiles',
+      record_id: id,
+      old_values: existingProfile,
+      new_values: profile,
+      user_id: ctx.user.id,
+    });
 
     return NextResponse.json({ profile });
   } catch (error) {

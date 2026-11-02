@@ -25,7 +25,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const ctx = await getProfile(supabase, req);
 
     if (!ctx?.profile || ctx.profile.role !== 'super_admin') {
-      return NextResponse.json({ error: 'Only super admins can reject requests' }, { status: 403 });
+      return NextResponse.json({ error: 'Only General Admins can reject requests' }, { status: 403 });
     }
 
     // Get request details

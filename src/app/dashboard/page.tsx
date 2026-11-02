@@ -508,6 +508,15 @@ export default function DashboardPage() {
                 Asset Register
               </Link>
             </Button>
+            {(isSuperAdmin || Boolean(user?.organizationId)) && (
+              <Link
+                href="/assets/create"
+                className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-3 py-2 text-sm font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90"
+              >
+                <PackagePlus className="h-4 w-4" />
+                Add Assets
+              </Link>
+            )}
             <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/60 px-3 py-1.5 text-[11px] font-medium text-muted-foreground">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               {isSuperAdmin ? "Super admin overview" : headerOrgLabel}

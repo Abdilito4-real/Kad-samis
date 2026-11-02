@@ -197,7 +197,7 @@ export function RequestHistory({ orgId }: RequestHistoryProps) {
       }
 
       toast.success("Request escalated", {
-        description: "Your request has been escalated to the super admin.",
+        description: "Your request has been escalated to General Admin.",
       });
 
       setEscalateDialogOpen(false);
@@ -313,7 +313,7 @@ export function RequestHistory({ orgId }: RequestHistoryProps) {
               {request.notes && (
                 <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-900/30">
                   <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                    Super Admin Notes
+                    General Admin Notes
                   </p>
                   <p className="text-sm text-slate-900 dark:text-slate-50">{request.notes}</p>
                 </div>
@@ -331,7 +331,7 @@ export function RequestHistory({ orgId }: RequestHistoryProps) {
                     className="gap-2 hover:border-purple-400 hover:text-purple-600"
                   >
                     <ArrowUp className="h-4 w-4" />
-                    Escalate to Super Admin
+                    Escalate to General Admin
                   </Button>
                 </div>
               )}
@@ -345,7 +345,7 @@ export function RequestHistory({ orgId }: RequestHistoryProps) {
           <DialogHeader>
             <DialogTitle>Escalate Request</DialogTitle>
             <DialogDescription>
-              Explain why this request needs escalation to the super admin
+              Explain why this request needs escalation to General Admin
             </DialogDescription>
           </DialogHeader>
 
@@ -361,7 +361,7 @@ export function RequestHistory({ orgId }: RequestHistoryProps) {
                 id="reason"
                 value={escalationReason}
                 onChange={(e) => setEscalationReason(e.target.value)}
-                placeholder="Explain why this request needs immediate attention from the super admin..."
+                placeholder="Explain why this request needs immediate attention from General Admin..."
                 rows={4}
                 className="resize-none"
               />

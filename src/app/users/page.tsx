@@ -386,7 +386,7 @@ export default function UsersPage() {
       <Card>
         <CardHeader>
           <CardTitle>Administrators</CardTitle>
-          <p className="text-sm text-muted-foreground">Super Admin and org-scoped admins (agency, ministry, department).</p>
+          <p className="text-sm text-muted-foreground">General Admin and organization-scoped admins (agency, ministry, department).</p>
         </CardHeader>
         <CardContent>
           {loading ? (

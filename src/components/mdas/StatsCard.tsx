@@ -57,23 +57,21 @@ export default function StatsCard({
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card py-4 pl-5 pr-4 shadow-sm transition hover:shadow-md"
+      className="relative flex h-full min-h-32 flex-col overflow-hidden rounded-2xl border border-border bg-card p-4 pl-5 shadow-sm transition hover:shadow-md sm:p-5 sm:pl-6"
     >
       <span className={`absolute left-0 top-0 h-full w-1 ${styles.bar}`} aria-hidden />
-      <div className="flex flex-1 items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-[11px] font-medium uppercase leading-snug tracking-wide text-muted-foreground">
-            {title}
-          </div>
-          <div className="mt-1.5 text-2xl font-semibold tabular-nums text-foreground">
-            {loading ? <Skeleton className="h-7 w-12" /> : typeof value === 'number' ? count : value}
-          </div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1 break-words text-[11px] font-medium uppercase leading-4 tracking-wide text-muted-foreground">
+          {title}
         </div>
         {icon && (
-          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${styles.chip} ${styles.icon}`}>
+          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${styles.chip} ${styles.icon}`}>
             {icon}
           </div>
         )}
+      </div>
+      <div className="mt-4 text-2xl font-semibold tabular-nums leading-none text-foreground sm:text-3xl">
+        {loading ? <Skeleton className="h-8 w-12" /> : typeof value === 'number' ? count : value}
       </div>
     </motion.div>
   );

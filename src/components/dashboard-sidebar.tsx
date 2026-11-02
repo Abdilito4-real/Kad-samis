@@ -63,7 +63,7 @@ const organizationAdminNavigationGroups: NavigationGroup[] = [
         name: "Requests",
         href: "/requests",
         icon: ClipboardList,
-        description: "Submit and track requests to super admin",
+        description: "Submit and track requests to General Admin",
       },
       {
         name: "Notifications",
@@ -179,7 +179,7 @@ export function getNavigationGroupsForRole(roleId?: string | null): NavigationGr
 }
 
 export const ROLE_LABELS: Record<string, string> = {
-  super_admin: "Super Admin",
+  super_admin: "General Admin",
   agency_admin: "Agency Admin",
   ministry_admin: "Ministry Admin",
   department_head: "Department Head",
@@ -277,7 +277,7 @@ export function DashboardSidebar({ mobileOpen = false, onMobileClose }: Dashboar
       <div className="mt-4 flex items-center justify-between rounded-xl border border-border bg-card px-3 py-2">
         <span className="text-xs font-medium text-muted-foreground">Signed in as</span>
         <span className="rounded-full bg-primary px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary-foreground">
-          {isSuperAdmin ? "Super Admin" : isOperationalManager ? "Operational Manager" : "Organization Admin"}
+          {isSuperAdmin ? "General Admin" : isOperationalManager ? "Operational Manager" : "Organization Admin"}
         </span>
       </div>
 

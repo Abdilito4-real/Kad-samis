@@ -62,7 +62,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     if (ctx.profile.role === 'super_admin') {
-      return NextResponse.json({ error: 'Super admins have read-only access to assets' }, { status: 403 });
+      return NextResponse.json({ error: 'General Admins have read-only access to assets' }, { status: 403 });
     }
 
     const { data: existing, error: fetchError } = await supabase
@@ -148,7 +148,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     if (ctx.profile.role === 'super_admin') {
-      return NextResponse.json({ error: 'Super admins have read-only access to assets' }, { status: 403 });
+      return NextResponse.json({ error: 'General Admins have read-only access to assets' }, { status: 403 });
     }
 
     const { data: existing, error: fetchError } = await supabase

@@ -53,7 +53,7 @@ export default function OrganizationOverview({ org, onUpdate, isSuperAdmin = fal
 
   const handleSave = async () => {
     if (isSuperAdmin) {
-      toast.error('Super admins have read-only access to organizations');
+      toast.error('General Admins have read-only access to organizations');
       return;
     }
     setSaving(true);
@@ -191,7 +191,7 @@ export default function OrganizationOverview({ org, onUpdate, isSuperAdmin = fal
           {isSuperAdmin ? (
             <p className="mt-2 flex items-center gap-1.5 text-sm text-amber-600">
               <ShieldCheck className="h-4 w-4 shrink-0" />
-              Super admins have read-only access to organization details.
+              General Admins have read-only access to organization details.
             </p>
           ) : null}
         </div>

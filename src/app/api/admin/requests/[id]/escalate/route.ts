@@ -30,7 +30,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     if (ctx.profile.role === 'super_admin') {
-      return NextResponse.json({ error: 'Super admins approve requests and cannot escalate them' }, { status: 403 });
+      return NextResponse.json({ error: 'General Admins approve requests and cannot escalate them' }, { status: 403 });
     }
 
     // Get request details

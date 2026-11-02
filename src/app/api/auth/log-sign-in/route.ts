@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerSideClient } from "@/lib/supabase/server";
-import { getSupabaseFromRequest, writeNotifications } from "@/lib/supabase/serverHelpers";
+import { getSuperAdminEmails, getSupabaseFromRequest, writeNotifications } from "@/lib/supabase/serverHelpers";
+import { sendActivityEmail } from "@/lib/sendbyte";
 import { checkRateLimit, getClientIdentifier, rateLimitResponse } from "@/lib/rate-limit";
 import { describeUserAgent } from "@/lib/parseUserAgent";
 
@@ -44,6 +45,19 @@ export async function POST(request: Request) {
         message: `Signed in with ${method === "passkey" ? "a passkey" : "your password"} from ${device} · ${identifier} · ${when}. Not you? Change your password in Settings.`,
       },
     ]);
+
+    const adminEmails = await getSuperAdminEmails();
+    await Promise.all(
+      adminEmails
+        .filter((email) => email.toLowerCase() !== user.email?.toLowerCase())
+        .map((email) =>
+          sendActivityEmail(
+            email,
+            "KAD-SAMIS security alert: successful sign-in",
+            `Account: ${user.email ?? user.id}. Signed in with ${method === "passkey" ? "a passkey" : "a password"} from ${device} at ${when}. IP address: ${identifier}.`
+          )
+        )
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {

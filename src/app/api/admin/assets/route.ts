@@ -25,6 +25,14 @@ interface SkippedRow {
   reasons: string[];
 }
 
+const ASSET_IMPORT_ROLES = new Set([
+  'super_admin',
+  'agency_admin',
+  'ministry_admin',
+  'department_head',
+  'asset_officer',
+]);
+
 async function getProfile(supabase: any, req?: Request) {
   const authHeader = req?.headers.get('authorization');
   const accessToken = authHeader?.replace(/^Bearer\s+/i, '').trim();
@@ -165,6 +173,10 @@ export async function POST(req: Request) {
     const ctx = await getProfile(supabase, req);
     if (!ctx?.profile) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!ASSET_IMPORT_ROLES.has(ctx.profile.role)) {
+      return NextResponse.json({ error: 'Your role does not have permission to import assets' }, { status: 403 });
     }
 
     const organizationId = ctx.profile.role === 'super_admin'

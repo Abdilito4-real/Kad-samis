@@ -15,6 +15,7 @@ import { Upload, Download, Package2, ShieldCheck, Wrench, ArrowRightLeft } from 
 import { RequestAssetDialog } from "@/components/requests/RequestAssetDialog";
 import { toCSV, downloadCSV } from "@/lib/csv";
 import { ASSET_CSV_HEADERS } from "@/lib/assetImport";
+import { logExportActivity } from "@/lib/logActivity";
 import { toast } from "sonner";
 
 const STATUS_BADGE: Record<string, string> = {
@@ -149,6 +150,7 @@ export default function AssetsPage() {
     ];
 
     downloadCSV(`assets-export-${new Date().toISOString().slice(0, 10)}.csv`, toCSV(rows));
+    void logExportActivity("assets", assetItems.length);
     toast.success(`Exported ${assetItems.length} asset${assetItems.length === 1 ? "" : "s"}.`);
   };
 

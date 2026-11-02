@@ -16,6 +16,8 @@ NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_KEY=your_service_key
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
+SENDBYTE_API_KEY=your_sendbyte_api_key
+SENDBYTE_FROM_EMAIL=KAD-SAMIS <notifications@yourdomain.ng>
 NEXT_PUBLIC_API_URL=http://localhost:3000
 ```
 

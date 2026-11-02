@@ -69,6 +69,7 @@ export function DashboardHeader({ onOpenCommandPalette, onOpenMobileMenu }: Dash
     const segments = pathname.split("/").filter(Boolean);
     const last = segments[segments.length - 1];
     if (!last) return "Dashboard";
+    if (last.toLowerCase() === "mdas") return "MDAS";
     return last.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
   }, [pathname]);
 

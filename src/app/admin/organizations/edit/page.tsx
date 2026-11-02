@@ -78,7 +78,7 @@ export default function EditOrganizationPage() {
 
   const saveOrganization = async () => {
     if (isSuperAdmin) {
-      toast.error('Super admins have read-only access to organizations');
+      toast.error('General Admins have read-only access to organizations');
       return;
     }
     if (!orgId) return;
@@ -109,7 +109,7 @@ export default function EditOrganizationPage() {
 
   const saveAdmin = async () => {
     if (isSuperAdmin) {
-      toast.error('Super admins have read-only access to organizations');
+      toast.error('General Admins have read-only access to organizations');
       return;
     }
     if (!adminId) {
@@ -168,7 +168,7 @@ export default function EditOrganizationPage() {
         {isSuperAdmin ? (
           <div className="flex items-start gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-600">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            Super admins have read-only access to organizations and cannot save changes here.
+            General Admins have read-only access to organizations and cannot save changes here.
           </div>
         ) : null}
       </div>

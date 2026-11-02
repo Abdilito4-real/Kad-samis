@@ -1,6 +1,7 @@
 import { createServerSideClient } from './server';
 import { createClient } from '@supabase/supabase-js';
 import webpush from 'web-push';
+import { sendActivityEmail } from '@/lib/sendbyte';
 
 const vapidPublicKey = process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
@@ -197,7 +198,7 @@ export async function writeAudit(
     new_values?: any;
     user_id?: string | null;
   }
-) {
+): Promise<boolean> {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
@@ -223,7 +224,7 @@ export async function writeAudit(
       recordId = recordId.trim() || null;
     }
 
-    await writer.from('audit_logs').insert({
+    const { error } = await writer.from('audit_logs').insert({
       user_id: userId,
       action: payload.action,
       table_name: payload.table_name,
@@ -235,8 +236,56 @@ export async function writeAudit(
       timestamp: new Date().toISOString(),
       created_at: new Date().toISOString(),
     });
+
+    if (error) {
+      console.error('writeAudit insert error', error.message);
+      return false;
+    }
+
+    if (userId) {
+      try {
+        const { data: actor, error: profileError } = await writer
+          .from('profiles')
+          .select('email')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (profileError) {
+          console.warn('writeAudit actor email lookup failed', profileError.message);
+        } else {
+          let actorEmail: string | null = actor?.email ?? null;
+          if (!actorEmail) {
+            const authResult = await getAuthenticatedUser(supabaseClient, request);
+            if (authResult && authResult.user.id === userId) actorEmail = authResult.user.email ?? null;
+          }
+
+          if (actorEmail) {
+            const tableName = payload.table_name.replace(/_/g, ' ');
+            let activity = `${payload.action} ${tableName}`;
+            const importedCount = payload.new_values?.imported;
+            const exportedCount = payload.new_values?.count;
+
+            if (payload.action === 'insert' && payload.table_name === 'assets' && Number.isInteger(importedCount)) {
+              activity = `imported ${importedCount} assets`;
+            } else if (payload.action === 'export' && Number.isInteger(exportedCount)) {
+              activity = `exported ${exportedCount} ${tableName}`;
+            }
+
+            await sendActivityEmail(
+              actorEmail,
+              `KAD-SAMIS activity: ${activity}`,
+              `Your account ${activity} on ${new Date().toLocaleString('en-GB')}.`
+            );
+          }
+        }
+      } catch (emailError) {
+        console.error('writeAudit activity email failed', emailError);
+      }
+    }
+    return true;
   } catch (err) {
     console.error('writeAudit failed', err);
+    return false;
   }
 }
 
@@ -319,6 +368,34 @@ export async function writeNotifications(
     if (error) {
       console.error('writeNotifications insert error', error);
     } else {
+      try {
+        const userIds = Array.from(new Set(rows.map((row) => row.user_id)));
+        const { data: recipients, error: emailLookupError } = await writer
+          .from('profiles')
+          .select('id, email')
+          .in('id', userIds);
+
+        if (emailLookupError) {
+          console.warn('writeNotifications email lookup failed', emailLookupError.message);
+        } else {
+          const emailByUserId = new Map<string, string>();
+          for (const recipient of recipients ?? []) {
+            if (recipient.email) emailByUserId.set(recipient.id, recipient.email);
+          }
+
+          await Promise.all(
+            rows.map(async (row) => {
+              const email = emailByUserId.get(row.user_id);
+              if (email) {
+                await sendActivityEmail(email, `KAD-SAMIS: ${row.title}`, row.message);
+              }
+            })
+          );
+        }
+      } catch (emailError) {
+        console.error('writeNotifications email delivery failed', emailError);
+      }
+
       // The in-app row is what matters most and has already saved — push
       // delivery is a best-effort bonus on top, so its failures must never
       // surface as a failure of the notification itself.
@@ -327,6 +404,29 @@ export async function writeNotifications(
   } catch (err) {
     console.error('writeNotifications failed', err);
   }
+}
+
+export async function getSuperAdminEmails(): Promise<string[]> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+
+  if (!supabaseUrl || !serviceKey) {
+    console.warn('Super admin email lookup requires the Supabase service role key');
+    return [];
+  }
+
+  const serviceClient = createClient(supabaseUrl, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data, error } = await serviceClient.from('profiles').select('email').eq('role', 'super_admin');
+
+  if (error) {
+    console.error('Super admin email lookup failed', error.message);
+    return [];
+  }
+
+  const emails = (data ?? []).flatMap((profile: { email: string | null }) => (profile.email ? [profile.email] : []));
+  return Array.from(new Set(emails));
 }
 
 /**

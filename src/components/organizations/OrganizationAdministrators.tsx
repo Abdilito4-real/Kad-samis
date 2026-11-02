@@ -30,7 +30,7 @@ export default function OrganizationAdministrators({ org, onUpdate }: { org: Org
   const [deleting, setDeleting] = useState<string | null>(null);
 
   const roleOptions = [
-    { value: 'super_admin', label: 'Super Admin' },
+    { value: 'super_admin', label: 'General Admin' },
     { value: 'ministry_admin', label: 'Ministry Admin' },
     { value: 'department_head', label: 'Department Head' },
     { value: 'asset_officer', label: 'Asset Officer' },

@@ -96,7 +96,7 @@ export function RequestSubmissionForm({ onSuccess, presetAsset }: RequestSubmiss
       }
 
       toast.success("Request submitted", {
-        description: "Sent to the super admin for approval. It will be routed to operations once approved.",
+        description: "Sent to General Admin for approval. It will be routed to operations once approved.",
       });
 
       setWorkType("repair");
@@ -119,7 +119,7 @@ export function RequestSubmissionForm({ onSuccess, presetAsset }: RequestSubmiss
       <div>
         <h3 className="text-lg font-semibold text-foreground">Request Maintenance / Repair</h3>
         <p className="text-sm text-muted-foreground">
-          Sent to the super admin for approval, then routed to an Operational Manager to monitor through completion.
+          Sent to General Admin for approval, then routed to an Operational Manager to monitor through completion.
         </p>
       </div>
 

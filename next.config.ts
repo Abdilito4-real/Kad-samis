@@ -43,6 +43,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
   images: {
     remotePatterns: [
       {
