@@ -39,6 +39,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       .from('assets')
       .select('*, asset_categories(id, name, code, depreciation_rate)')
       .eq('organization_id', orgId)
+      .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
     if (assetError) {

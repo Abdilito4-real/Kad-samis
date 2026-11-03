@@ -340,8 +340,8 @@ export async function writeNotifications(
     related_request_id?: string | null;
     read?: boolean;
   }>
-) {
-  if (!rows.length) return;
+): Promise<boolean> {
+  if (!rows.length) return true;
 
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -367,6 +367,7 @@ export async function writeNotifications(
 
     if (error) {
       console.error('writeNotifications insert error', error);
+      return false;
     } else {
       try {
         const userIds = Array.from(new Set(rows.map((row) => row.user_id)));
@@ -400,10 +401,13 @@ export async function writeNotifications(
       // delivery is a best-effort bonus on top, so its failures must never
       // surface as a failure of the notification itself.
       await sendPushToUsers(writer, rows).catch((err) => console.error('sendPushToUsers failed', err));
+      return true;
     }
   } catch (err) {
     console.error('writeNotifications failed', err);
   }
+
+  return false;
 }
 
 export async function writeAssetChangeNotifications(
@@ -411,11 +415,11 @@ export async function writeAssetChangeNotifications(
   organizationId: string,
   title: string,
   message: string
-) {
+): Promise<boolean> {
   try {
     if (!(process.env.NEXT_PUBLIC_SUPABASE_URL && (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY))) {
       console.error('Asset notifications require the Supabase service role key');
-      return;
+      return false;
     }
 
     const writer = getServiceRoleClient(supabaseClient);
@@ -429,7 +433,7 @@ export async function writeAssetChangeNotifications(
         organizationError: organizationRecipients.error?.message,
         superAdminError: superAdmins.error?.message,
       });
-      return;
+      return false;
     }
 
     const recipientIds = Array.from(
@@ -440,10 +444,10 @@ export async function writeAssetChangeNotifications(
     );
     if (recipientIds.length === 0) {
       console.warn('Asset notification has no recipients', { organizationId });
-      return;
+      return false;
     }
 
-    await writeNotifications(
+    return await writeNotifications(
       writer,
       recipientIds.map((userId) => ({
         user_id: userId,
@@ -454,7 +458,10 @@ export async function writeAssetChangeNotifications(
     );
   } catch (error) {
     console.error('Asset change notification delivery failed', error);
+    return false;
   }
+
+  return false;
 }
 
 export async function getSuperAdminEmails(): Promise<string[]> {

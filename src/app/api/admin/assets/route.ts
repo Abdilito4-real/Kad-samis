@@ -131,8 +131,9 @@ export async function GET(req: Request) {
     let query = queryClient
       .from('assets')
       .select(
-        'id, asset_number, name, status, condition, make, purchase_year, purchase_value, warranty_years, geolocation, created_at, organization_id, asset_categories(name)'
+        'id, asset_number, name, status, condition, make, purchase_year, purchase_value, warranty_years, geolocation, created_at, organization_id, asset_categories(name), organizations(name)'
       )
+      .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
     // Only super_admin can see all assets; org admins see only their organization's assets

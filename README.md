@@ -266,6 +266,9 @@ Key API endpoints will be developed in `/src/app/api/`:
 NEXT_PUBLIC_SUPABASE_URL=your_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_KEY=your_service_key
+CRON_SECRET=your_vercel_cron_secret
+SENDBYTE_API_KEY=your_sendbyte_api_key
+SENDBYTE_FROM_EMAIL=your_verified_sender
 
 # API
 NEXT_PUBLIC_API_URL=http://localhost:3000
@@ -281,6 +284,14 @@ NEXT_PUBLIC_APP_DESCRIPTION=Kaduna State Asset Management Information System
 ```bash
 vercel deploy
 ```
+
+The monthly operational-backup reminder uses the Vercel Cron configured in
+`vercel.json`. Apply the Supabase migrations and configure `CRON_SECRET`,
+`SUPABASE_SERVICE_KEY` (or `SUPABASE_SERVICE_ROLE_KEY`), `SENDBYTE_API_KEY`,
+and `SENDBYTE_FROM_EMAIL` in the production environment. The scheduled job
+runs on the last calendar day of each month in Africa/Lagos time. Backup
+exports contain operational records only; they are not full Supabase backups
+and do not include authentication accounts or stored files.
 
 ### Docker
 ```bash

@@ -76,13 +76,9 @@ export function parseCSVWithHeader(text: string): Record<string, string>[] {
 function escapeCell(value: unknown): string {
   let str = value === null || value === undefined ? "" : String(value);
 
-  // CSV formula injection guard: a cell starting with =, +, -, or @ is
-  // interpreted as a formula by Excel/Sheets when the file is opened
-  // (e.g. an asset named `=cmd|'/c calc'!A1` or a data-exfiltrating
-  // `=WEBSERVICE(...)`). Prefixing with a leading apostrophe forces it to
-  // be read as plain text instead — Excel drops the apostrophe on
-  // display, Sheets shows it, but neither executes the formula.
-  if (/^[=+\-@]/.test(str)) {
+  // Spreadsheet clients may ignore leading whitespace/control characters
+  // before interpreting a cell as a formula.
+  if (/^[\s\u0000-\u001f\u007f-\u009f]*[=+\-@]/u.test(str)) {
     str = `'${str}`;
   }
 

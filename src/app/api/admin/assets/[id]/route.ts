@@ -16,8 +16,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   try {
     const { id } = await params;
     const supabase = getSupabaseFromRequest(req) ?? (await createServerSideClient());
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)) {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !(serviceRoleKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)) {
       return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
     }
 
@@ -30,6 +31,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       .from('assets')
       .select(ASSET_COLUMNS)
       .eq('id', id)
+      .is('deleted_at', null)
       .maybeSingle();
 
     if (error) {
@@ -75,6 +77,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       .from('assets')
       .select('id, organization_id')
       .eq('id', id)
+      .is('deleted_at', null)
       .maybeSingle();
 
     if (fetchError) {
@@ -83,7 +86,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!existing) {
       return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
     }
-    if (existing.organization_id !== ctx.profile.organization_id) {
+    if (ctx.profile.role !== 'super_admin' && existing.organization_id !== ctx.profile.organization_id) {
       return NextResponse.json({ error: 'You do not have access to this asset' }, { status: 403 });
     }
 
@@ -144,8 +147,9 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   try {
     const { id } = await params;
     const supabase = getSupabaseFromRequest(req) ?? (await createServerSideClient());
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)) {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !(serviceRoleKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)) {
       return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
     }
 
@@ -153,14 +157,24 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     if (!ctx?.profile) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    if (ctx.profile.role === 'super_admin') {
-      return NextResponse.json({ error: 'General Admins have read-only access to assets' }, { status: 403 });
+    if (ctx.profile.role === 'super_admin' && !serviceRoleKey) {
+      return NextResponse.json(
+        { error: 'Server-side Supabase service-role access is required to delete assets.' },
+        { status: 503 }
+      );
     }
 
-    const { data: existing, error: fetchError } = await supabase
+    const serviceClient = serviceRoleKey
+      ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey, {
+          auth: { persistSession: false, autoRefreshToken: false },
+        })
+      : null;
+    const dataClient = ctx.profile.role === 'super_admin' ? serviceClient! : supabase;
+    const { data: existing, error: fetchError } = await dataClient
       .from('assets')
       .select('id, asset_number, name, category_id, condition, status, organization_id')
       .eq('id', id)
+      .is('deleted_at', null)
       .maybeSingle();
 
     if (fetchError) {
@@ -169,14 +183,14 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     if (!existing) {
       return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
     }
-    if (existing.organization_id !== ctx.profile.organization_id) {
+    if (ctx.profile.role !== 'super_admin' && existing.organization_id !== ctx.profile.organization_id) {
       return NextResponse.json({ error: 'You do not have access to this asset' }, { status: 403 });
     }
 
-    const notificationClient = getServiceRoleClient(supabase);
+    const notificationClient = serviceClient ?? getServiceRoleClient(supabase);
     const [{ data: category, error: categoryError }, { data: organization, error: organizationError }] = await Promise.all([
-      supabase.from('asset_categories').select('name').eq('id', existing.category_id).maybeSingle(),
-      supabase.from('organizations').select('name').eq('id', existing.organization_id).maybeSingle(),
+      dataClient.from('asset_categories').select('name').eq('id', existing.category_id).maybeSingle(),
+      dataClient.from('organizations').select('name').eq('id', existing.organization_id).maybeSingle(),
     ]);
     if (categoryError) {
       console.warn('Deleted asset category lookup failed', categoryError.message);
@@ -185,9 +199,19 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
       console.warn('Deleted asset organization lookup failed', organizationError.message);
     }
 
-    const { error } = await supabase.from('assets').delete().eq('id', id);
+    const now = new Date().toISOString();
+    const { data: removedAsset, error } = await dataClient
+      .from('assets')
+      .update({ deleted_at: now, updated_at: now, updated_by: ctx.user.id })
+      .eq('id', id)
+      .is('deleted_at', null)
+      .select('id')
+      .maybeSingle();
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    if (!removedAsset) {
+      return NextResponse.json({ error: 'Asset was already removed from the active register' }, { status: 404 });
     }
 
     try {
@@ -196,7 +220,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
         table_name: 'assets',
         record_id: id,
         old_values: existing,
-        new_values: {},
+        new_values: { deleted_at: now },
         user_id: ctx.user?.id ?? null,
       });
     } catch (err) {
@@ -205,14 +229,14 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
     const organizationName = organization?.name ?? 'the organization';
     const categoryName = category?.name ?? 'Unknown category';
-    await writeAssetChangeNotifications(
+    const notificationsSent = await writeAssetChangeNotifications(
       notificationClient,
       existing.organization_id,
-      `Asset deleted from ${organizationName}`,
-      `Asset ${existing.asset_number} — ${existing.name} was deleted from ${organizationName}. Category: ${categoryName}; condition: ${existing.condition}; status: ${existing.status}.`
+      `Asset removed from ${organizationName}`,
+      `Asset ${existing.asset_number} — ${existing.name} was removed from the active register for ${organizationName}. Its related maintenance, inspection, and transfer history has been retained. Category: ${categoryName}; condition: ${existing.condition}; status: ${existing.status}.`
     );
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, notificationsSent });
   } catch (error) {
     console.error('Asset delete failed', error);
     return NextResponse.json({ error: 'Unable to delete asset' }, { status: 500 });

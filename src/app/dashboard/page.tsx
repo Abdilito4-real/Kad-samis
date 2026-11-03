@@ -28,6 +28,7 @@ import { useAuth } from "@/components/auth-provider";
 import { createClient } from "@/lib/supabase/client";
 import { displayIdentity } from "@/lib/displayIdentity";
 import { WarrantyIndicator } from "@/components/assets/WarrantyIndicator";
+import { BackupReminderBanner } from "@/components/notifications/BackupReminderBanner";
 
 type Tone = "neutral" | "emerald" | "sky" | "amber" | "violet" | "rose";
 
@@ -457,6 +458,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <BackupReminderBanner />
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}

@@ -22,6 +22,7 @@ import {
   Search,
   ShieldCheck,
   Landmark,
+  Database,
   ChevronsUpDown,
   X,
 } from "lucide-react";
@@ -53,6 +54,12 @@ const organizationAdminNavigationGroups: NavigationGroup[] = [
         href: "/assets",
         icon: Package,
         description: "Registry and lifecycle",
+      },
+      {
+        name: "Backups",
+        href: "/admin/backups",
+        icon: Database,
+        description: "Download and verify operational-data backups",
       },
     ],
   },
@@ -102,6 +109,12 @@ const superAdminNavigationGroups: NavigationGroup[] = [
         href: "/assets",
         icon: Package,
         description: "Review assets across organizations",
+      },
+      {
+        name: "Backups",
+        href: "/admin/backups",
+        icon: Database,
+        description: "Export system-wide operational data",
       },
     ],
   },

@@ -57,6 +57,7 @@ export async function GET(req: Request) {
           .from('assets')
           .select('id, asset_number, name, status, condition, purchase_year, warranty_years, created_at', { count: 'exact' })
           .eq('organization_id', organizationId)
+          .is('deleted_at', null)
           .order('created_at', { ascending: false })
           .limit(8),
       ]);
@@ -98,7 +99,7 @@ export async function GET(req: Request) {
       queryClient.from('profiles').select('id', { count: 'exact' }),
       queryClient.from('requests').select('id', { count: 'exact' }),
       queryClient.from('requests').select('id', { count: 'exact' }).eq('status', 'pending'),
-      queryClient.from('assets').select('id, asset_number, name, status, condition, created_at').order('created_at', { ascending: false }).limit(8),
+      queryClient.from('assets').select('id, asset_number, name, status, condition, created_at').is('deleted_at', null).order('created_at', { ascending: false }).limit(8),
     ]);
 
     if (orgsRes.error || usersRes.error || requestsRes.error || pendingRes.error || assetsRes.error) {

@@ -42,7 +42,8 @@ export async function GET(req: Request) {
     // Fetch all assets with categories for portfolio value calculation
     const { data: allAssets, error: assetError } = await supabase
       .from('assets')
-      .select('id, asset_number, name, purchase_value, purchase_year, organization_id, category_id, asset_categories(depreciation_rate)');
+      .select('id, asset_number, name, purchase_value, purchase_year, organization_id, category_id, asset_categories(depreciation_rate)')
+      .is('deleted_at', null);
 
     if (assetError) {
       console.warn('Failed to load assets:', assetError);

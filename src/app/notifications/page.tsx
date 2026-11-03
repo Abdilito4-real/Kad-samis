@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BellRing, AlertTriangle, CheckCircle2, Info, Loader2, ShieldCheck } from "lucide-react";
+import { Archive, BellRing, AlertTriangle, CheckCircle2, Info, Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/auth-provider";
@@ -15,6 +15,7 @@ const NOTIFICATION_ICONS: Record<string, ReactNode> = {
   approval: <CheckCircle2 className="h-4 w-4" />,
   request: <AlertTriangle className="h-4 w-4" />,
   security: <ShieldCheck className="h-4 w-4" />,
+  backup_reminder: <Archive className="h-4 w-4" />,
 };
 
 function NotificationRowSkeleton() {
@@ -42,29 +43,27 @@ interface Notification {
 
 export default function NotificationsPage() {
   const { user, loading: authLoading } = useAuth();
+  const userId = user?.id;
   const [items, setItems] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
-  const [hasLoadedNotifications, setHasLoadedNotifications] = useState(false);
+  const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadCounter, setReloadCounter] = useState(0);
   // Tracks the one notification currently being marked read, so only that
   // row shows a busy state instead of blocking the whole list.
   const [markingId, setMarkingId] = useState<string | null>(null);
-  const sessionKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     const loadNotifications = async () => {
       try {
+        setLoadError(null);
         const supabase = createClient();
         const { data: { session } } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
-        if (!session || cancelled) return;
-
-        const nextSessionKey = session.access_token ?? 'anonymous';
-        if (sessionKeyRef.current && sessionKeyRef.current !== nextSessionKey) {
-          return;
-        }
-        if (!sessionKeyRef.current) {
-          sessionKeyRef.current = nextSessionKey;
+        if (cancelled) return;
+        if (!session?.access_token) {
+          throw new Error("Your session has expired. Sign in again to load notifications.");
         }
 
         const response = await fetch("/api/notifications", {
@@ -75,13 +74,14 @@ export default function NotificationsPage() {
         if (!response.ok) throw new Error(data.error || "Unable to load notifications");
         if (!cancelled) {
           setItems(data.notifications ?? []);
-          setHasLoadedNotifications(true);
+          setLoadedUserId(userId ?? null);
         }
       } catch (error) {
         if (!cancelled) {
-          if (!hasLoadedNotifications) {
+          if (loadedUserId !== userId) {
             setItems([]);
           }
+          setLoadError(error instanceof Error ? error.message : "Unable to load notifications.");
           toast.error("Unable to load notifications", { description: error instanceof Error ? error.message : undefined });
         }
       } finally {
@@ -91,14 +91,16 @@ export default function NotificationsPage() {
       }
     };
 
-    if (!authLoading && user?.id && !hasLoadedNotifications) {
+    if (!authLoading && !userId) {
+      setLoading(false);
+    } else if (!authLoading && userId && loadedUserId !== userId) {
       loadNotifications();
     }
 
     return () => {
       cancelled = true;
     };
-  }, [authLoading, user, hasLoadedNotifications]);
+  }, [authLoading, userId, loadedUserId, reloadCounter]);
 
   const unreadCount = items.filter((item) => !item.read).length;
 
@@ -107,16 +109,27 @@ export default function NotificationsPage() {
     try {
       const supabase = createClient();
       const { data: { session } } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
+      if (!session?.access_token) {
+        throw new Error("Your session has expired. Sign in again to update notifications.");
+      }
 
-      await fetch("/api/notifications", {
+      const response = await fetch("/api/notifications", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({ id }),
       });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "Unable to update notification");
+      }
       setItems((current) => current.map((item) => (item.id === id ? { ...item, read: true } : item)));
+    } catch (error) {
+      toast.error("Unable to mark notification as read", {
+        description: error instanceof Error ? error.message : undefined,
+      });
     } finally {
       setMarkingId(null);
     }
@@ -146,6 +159,21 @@ export default function NotificationsPage() {
                 <NotificationRowSkeleton key={index} />
               ))}
             </ResponsiveList>
+          ) : loadError ? (
+            <div className="py-8 text-center">
+              <p className="text-sm text-destructive">{loadError}</p>
+              <button
+                type="button"
+                className="mt-3 text-sm font-medium text-primary underline-offset-4 hover:underline"
+                onClick={() => {
+                  setLoading(true);
+                  setLoadError(null);
+                  setReloadCounter((counter) => counter + 1);
+                }}
+              >
+                Try again
+              </button>
+            </div>
           ) : items.length === 0 ? (
             <p className="py-8 text-sm text-muted-foreground">No notifications yet.</p>
           ) : <ResponsiveList>

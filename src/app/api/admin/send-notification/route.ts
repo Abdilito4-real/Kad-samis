@@ -43,7 +43,10 @@ export async function POST(request: Request) {
       message,
     }));
 
-    await writeNotifications(supabase, notifications);
+    const sent = await writeNotifications(supabase, notifications);
+    if (!sent) {
+      return NextResponse.json({ error: 'Unable to save organization notifications' }, { status: 500 });
+    }
 
     return NextResponse.json({ success: true, sent: notifications.length });
   } catch (error) {
