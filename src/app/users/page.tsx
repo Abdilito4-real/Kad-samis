@@ -26,11 +26,21 @@ interface Profile {
   created_at: string;
 }
 
-const formatRole = (role: string | null) =>
-  (role || "read_only_user").replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
+const formatRole = (role: string | null) => {
+  if (role === "agency_admin" || role === "ministry_admin" || role === "department_head") {
+    return "Organization Admin";
+  }
+  return (role || "read_only_user").replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
+};
 
 const ADMIN_ROLES = new Set(["super_admin", "agency_admin", "ministry_admin", "department_head"]);
 const USERNAME_ROLES = new Set(["super_admin", "operational_manager"]);
+const ORGANIZATION_STAFF_ROLES = [
+  ["agency_admin", "Organization Admin"],
+  ["mechanical_request_handler", "Mechanical Request Handler"],
+  ["electrical_mechanical_handler", "Electrical & Mechanical Request Handler"],
+  ["custodian", "Custodian"],
+] as const;
 
 function UserRowSkeleton() {
   return (
@@ -44,12 +54,59 @@ function UserRowSkeleton() {
   );
 }
 
-function UserRow({ user, onUsernameSaved }: { user: Profile; onUsernameSaved: (id: string, username: string) => void }) {
+function UserRow({
+  user,
+  onUsernameSaved,
+  canManageRoles = false,
+  currentUserId,
+  onRoleSaved,
+}: {
+  user: Profile;
+  onUsernameSaved: (id: string, username: string) => void;
+  canManageRoles?: boolean;
+  currentUserId?: string;
+  onRoleSaved?: (id: string, role: string) => void;
+}) {
   const isOperationalManager = user.role === "operational_manager";
   const usesUsername = user.role ? USERNAME_ROLES.has(user.role) : false;
   const [editing, setEditing] = useState(false);
   const [draftUsername, setDraftUsername] = useState(user.username ?? "");
   const [saving, setSaving] = useState(false);
+  const [selectedRole, setSelectedRole] = useState(
+    user.role === "ministry_admin" || user.role === "department_head" ? "agency_admin" : user.role ?? "agency_admin"
+  );
+  const [savingRole, setSavingRole] = useState(false);
+
+  const handleRoleChange = async (role: string) => {
+    const previousRole = selectedRole;
+    setSelectedRole(role);
+    setSavingRole(true);
+    try {
+      const supabase = createClient();
+      if (!supabase) throw new Error("Supabase client not initialized");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No authenticated session");
+
+      const response = await fetch(`/api/admin/profiles/${user.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + session.access_token,
+        },
+        body: JSON.stringify({ role }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to update user role");
+
+      onRoleSaved?.(user.id, data.profile.role);
+      toast.success(`${formatRole(user.role)} changed to ${formatRole(data.profile.role)}`);
+    } catch (error) {
+      setSelectedRole(previousRole);
+      toast.error(error instanceof Error ? error.message : "Failed to update user role");
+    } finally {
+      setSavingRole(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!draftUsername.trim()) {
@@ -82,7 +139,7 @@ function UserRow({ user, onUsernameSaved }: { user: Profile; onUsernameSaved: (i
   };
 
   const identityBlock = (
-    <div className="min-w-0">
+    <div className="min-w-0 flex-1">
       {editing ? (
         <div className="flex items-center gap-2" onClick={(e) => e.preventDefault()}>
           <Input
@@ -133,6 +190,25 @@ function UserRow({ user, onUsernameSaved }: { user: Profile; onUsernameSaved: (i
       {isOperationalManager && (
         <p className="mt-0.5 text-xs text-muted-foreground">View assigned requests and their stages</p>
       )}
+      {canManageRoles && user.id !== currentUserId && (
+        <div className="mt-3 w-full max-w-sm space-y-1.5 rounded-lg border border-border bg-muted/30 p-3">
+          <label htmlFor={`role-${user.id}`} className="block text-sm font-semibold">
+            Change this user’s role
+          </label>
+          <select
+            id={`role-${user.id}`}
+            value={selectedRole}
+            disabled={savingRole}
+            onChange={(event) => void handleRoleChange(event.target.value)}
+            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
+          >
+            {ORGANIZATION_STAFF_ROLES.map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+          {savingRole && <p className="text-xs text-muted-foreground">Saving role…</p>}
+        </div>
+      )}
     </div>
   );
 
@@ -169,6 +245,7 @@ function UserRow({ user, onUsernameSaved }: { user: Profile; onUsernameSaved: (i
 export default function UsersPage() {
   const { user } = useAuth();
   const isSuperAdmin = user?.roleId === "super_admin";
+  const isOrganizationAdmin = Boolean(user?.roleId && ["agency_admin", "ministry_admin", "department_head"].includes(user.roleId));
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -177,6 +254,11 @@ export default function UsersPage() {
   const [operatorEmail, setOperatorEmail] = useState("");
   const [operatorPassword, setOperatorPassword] = useState("");
   const [savingOperator, setSavingOperator] = useState(false);
+  const [addingStaff, setAddingStaff] = useState(false);
+  const [staffEmail, setStaffEmail] = useState("");
+  const [staffPassword, setStaffPassword] = useState("");
+  const [staffRole, setStaffRole] = useState<(typeof ORGANIZATION_STAFF_ROLES)[number][0]>("mechanical_request_handler");
+  const [savingStaff, setSavingStaff] = useState(false);
 
   const authHeaders = async () => {
     const supabase = createClient();
@@ -213,6 +295,10 @@ export default function UsersPage() {
 
   const handleUsernameSaved = (id: string, username: string) => {
     setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, username } : u)));
+  };
+
+  const handleRoleSaved = (id: string, role: string) => {
+    setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)));
   };
 
   const handleAddOperator = async () => {
@@ -262,6 +348,46 @@ export default function UsersPage() {
     }
   };
 
+  const handleAddStaff = async () => {
+    if (!staffEmail.trim() || !/\S+@\S+\.\S+/.test(staffEmail)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+    if (staffPassword.length < 8) {
+      toast.error("Set a temporary password of at least 8 characters");
+      return;
+    }
+
+    setSavingStaff(true);
+    try {
+      const headers = await authHeaders();
+      const response = await fetch("/api/admin/profiles", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          email: staffEmail.trim(),
+          password: staffPassword,
+          role: staffRole,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to create user");
+
+      setUsers((prev) => [data.profile, ...prev]);
+      setStaffEmail("");
+      setStaffPassword("");
+      setStaffRole("mechanical_request_handler");
+      setAddingStaff(false);
+      toast.success("User created", {
+        description: "Share the temporary password securely. The user can change it after signing in.",
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create user");
+    } finally {
+      setSavingStaff(false);
+    }
+  };
+
   const operationalManagers = useMemo(() => users.filter((u) => u.role === "operational_manager"), [users]);
   const administrators = useMemo(() => users.filter((u) => u.role && ADMIN_ROLES.has(u.role)), [users]);
   const otherStaff = useMemo(
@@ -278,8 +404,12 @@ export default function UsersPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Users</h1>
-          <p className="text-muted-foreground">Govern access and accountability across ministries and departments.</p>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{isOrganizationAdmin ? "Organization Users" : "Users"}</h1>
+          <p className="text-muted-foreground">
+            {isOrganizationAdmin
+              ? "Create staff accounts for your organization and assign their responsibilities."
+              : "Govern access and accountability across ministries and departments."}
+          </p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground">
           <UserPlus className="h-4 w-4" /> User provisioning uses Supabase Auth
@@ -295,6 +425,68 @@ export default function UsersPage() {
           <MetricCard key={item.title} title={item.title} value={loading ? <MetricValueSkeleton /> : item.value} icon={item.icon} />
         ))}
       </ResponsiveGrid>
+
+      {isOrganizationAdmin && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-4">
+            <div>
+              <CardTitle>Organization staff</CardTitle>
+              <p className="mt-1 text-sm text-muted-foreground">
+                New users are restricted to your organization. Create the replacement Org Admin before changing the current admin’s role.
+              </p>
+            </div>
+            <Button size="sm" onClick={() => setAddingStaff((value) => !value)} className="gap-2">
+              {addingStaff ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+              {addingStaff ? "Cancel" : "Create user"}
+            </Button>
+          </CardHeader>
+          {addingStaff && (
+            <CardContent>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="staff-email">Email address</Label>
+                  <Input
+                    id="staff-email"
+                    type="email"
+                    value={staffEmail}
+                    onChange={(event) => setStaffEmail(event.target.value)}
+                    placeholder="staff@example.gov.ng"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="staff-role">Role</Label>
+                  <select
+                    id="staff-role"
+                    value={staffRole}
+                    onChange={(event) => setStaffRole(event.target.value as typeof staffRole)}
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    {ORGANIZATION_STAFF_ROLES.map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="staff-password">Temporary password</Label>
+                  <Input
+                    id="staff-password"
+                    type="password"
+                    value={staffPassword}
+                    onChange={(event) => setStaffPassword(event.target.value)}
+                    placeholder="At least 8 characters"
+                    autoComplete="new-password"
+                  />
+                </div>
+              </div>
+              <div className="mt-3 flex justify-end">
+                <Button onClick={handleAddStaff} isLoading={savingStaff} loadingText="Creating user">
+                  Create user
+                </Button>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       {isSuperAdmin && (
         <Card>
@@ -402,7 +594,14 @@ export default function UsersPage() {
           ) : (
             <ResponsiveList>
               {administrators.map((u) => (
-                <UserRow key={u.id} user={u} onUsernameSaved={handleUsernameSaved} />
+                <UserRow
+                  key={u.id}
+                  user={u}
+                  onUsernameSaved={handleUsernameSaved}
+                  canManageRoles={isOrganizationAdmin}
+                  currentUserId={user?.id}
+                  onRoleSaved={handleRoleSaved}
+                />
               ))}
             </ResponsiveList>
           )}
@@ -426,7 +625,14 @@ export default function UsersPage() {
           ) : (
             <ResponsiveList>
               {otherStaff.map((u) => (
-                <UserRow key={u.id} user={u} onUsernameSaved={handleUsernameSaved} />
+                <UserRow
+                  key={u.id}
+                  user={u}
+                  onUsernameSaved={handleUsernameSaved}
+                  canManageRoles={isOrganizationAdmin}
+                  currentUserId={user?.id}
+                  onRoleSaved={handleRoleSaved}
+                />
               ))}
             </ResponsiveList>
           )}

@@ -69,6 +69,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    if (ctx.profile.role === 'custodian') {
+      return NextResponse.json({ error: 'Custodians can upload assets but cannot edit them' }, { status: 403 });
+    }
+
     if (ctx.profile.role === 'super_admin') {
       return NextResponse.json({ error: 'General Admins have read-only access to assets' }, { status: 403 });
     }
@@ -156,6 +160,9 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     const ctx = await getProfile(supabase, req);
     if (!ctx?.profile) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (ctx.profile.role === 'custodian') {
+      return NextResponse.json({ error: 'Custodians can upload assets but cannot delete them' }, { status: 403 });
     }
     if (ctx.profile.role === 'super_admin' && !serviceRoleKey) {
       return NextResponse.json(

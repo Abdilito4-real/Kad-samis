@@ -29,6 +29,7 @@ import { createClient } from "@/lib/supabase/client";
 import { displayIdentity } from "@/lib/displayIdentity";
 import { WarrantyIndicator } from "@/components/assets/WarrantyIndicator";
 import { BackupReminderBanner } from "@/components/notifications/BackupReminderBanner";
+import { canViewOverview, getRoleLandingPath } from "@/lib/roleLanding";
 
 type Tone = "neutral" | "emerald" | "sky" | "amber" | "violet" | "rose";
 
@@ -108,10 +109,12 @@ const getInitials = (value: string) => {
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const orgId = searchParams.get("orgId");
   const orgName = searchParams.get("orgName");
   const isSuperAdmin = user?.roleId === "super_admin";
+  const canViewDashboard = canViewOverview(user?.roleId);
   const [summary, setSummary] = useState<any>(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [summaryError, setSummaryError] = useState<string | null>(null);
@@ -122,7 +125,13 @@ export default function DashboardPage() {
   const [superAdminRequests, setSuperAdminRequests] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!isSuperAdmin || !user || orgId) {
+    if (!authLoading && user && !canViewDashboard) {
+      router.replace(getRoleLandingPath(user.roleId));
+    }
+  }, [authLoading, canViewDashboard, router, user]);
+
+  useEffect(() => {
+    if (!canViewDashboard || !isSuperAdmin || !user || orgId) {
       setSuperAdminRequests([]);
       return;
     }
@@ -160,14 +169,14 @@ export default function DashboardPage() {
       isMounted = false;
       window.clearInterval(intervalId);
     };
-  }, [isSuperAdmin, user, orgId]);
+  }, [canViewDashboard, isSuperAdmin, user, orgId]);
 
   useEffect(() => {
     // Sessions live in localStorage, not cookies (see lib/supabase/client.ts),
     // so the API route can't identify the caller without an explicit bearer
     // token — without it, it falls back to generic/global counts instead of
     // this org admin's own organization data.
-    if (authLoading || !user) {
+    if (authLoading || !user || !canViewDashboard) {
       return;
     }
 
@@ -217,10 +226,10 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [orgId, authLoading, user]);
+  }, [orgId, authLoading, canViewDashboard, user]);
 
   useEffect(() => {
-    if (!isSuperAdmin || !user) {
+    if (!canViewDashboard || !isSuperAdmin || !user) {
       setSuperAdminDashboard(null);
       setSuperAdminDashboardError(null);
       return;
@@ -281,12 +290,13 @@ export default function DashboardPage() {
     return () => {
       isMounted = false;
     };
-  }, [isSuperAdmin, user]);
+  }, [canViewDashboard, isSuperAdmin, user]);
 
   useEffect(() => {
     let isMounted = true;
 
     const resolveOrgName = async () => {
+      if (!canViewDashboard) return;
       if (orgId) {
         if (isMounted) setCurrentOrgName(orgName ?? null);
         return;
@@ -322,7 +332,7 @@ export default function DashboardPage() {
     return () => {
       isMounted = false;
     };
-  }, [orgId, orgName, user?.organizationId, isSuperAdmin]);
+  }, [canViewDashboard, orgId, orgName, user?.organizationId, isSuperAdmin]);
 
   // Use organization name if available and user is org admin, otherwise use user name
   const userName = !isSuperAdmin && (currentOrgName || summary?.organization?.name)
@@ -343,7 +353,6 @@ export default function DashboardPage() {
     ? summary?.organization?.name || orgName || currentOrgName || "Selected organization"
     : currentOrgName || "Enterprise view";
 
-  const router = useRouter();
   const showBackToSuperAdmin = isSuperAdmin && !!orgId;
 
   const requestItems = (summary?.requests ?? []) as Array<any>;
@@ -456,6 +465,14 @@ export default function DashboardPage() {
       ]
     : [];
 
+  if (!authLoading && user && !canViewDashboard) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center text-sm text-muted-foreground">
+        Opening your task workspace…
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <BackupReminderBanner />
@@ -517,6 +534,29 @@ export default function DashboardPage() {
           </div>
         </div>
       </motion.div>
+
+      {user?.roleId === "agency_admin" && !orgId ? (
+        <Link
+          href="/requests/received"
+          className="flex flex-col gap-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.06] p-4 transition hover:border-emerald-500/40 hover:bg-emerald-500/10 sm:flex-row sm:items-center sm:justify-between sm:p-5"
+        >
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600">
+              <FileSearch className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Requests awaiting your review</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Review requests forwarded by the Electrical & Mechanical Request Handler.
+              </p>
+            </div>
+          </div>
+          <span className="inline-flex shrink-0 items-center gap-2 self-start rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white sm:self-auto">
+            {summary?.agencyAdminPendingRequests ?? 0} to review
+            <ArrowUpRight className="h-4 w-4" />
+          </span>
+        </Link>
+      ) : null}
 
       {isSuperAdmin && !orgId && superAdminPendingApprovals.length > 0 ? (
         <div

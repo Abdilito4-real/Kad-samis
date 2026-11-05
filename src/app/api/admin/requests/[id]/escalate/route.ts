@@ -1,125 +1,150 @@
 import { NextResponse } from 'next/server';
 import { createServerSideClient } from '@/lib/supabase/server';
-import { getProfile, getSupabaseFromRequest, normalizeUuid, isValidUuid, writeAudit } from '@/lib/supabase/serverHelpers';
+import {
+  getProfile,
+  getServiceRoleClient,
+  getSupabaseFromRequest,
+  isValidUuid,
+  writeAudit,
+  writeNotifications,
+} from '@/lib/supabase/serverHelpers';
+
+const ORGANIZATION_ADMIN_ROLES = ['agency_admin', 'ministry_admin', 'department_head'];
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const requestId = normalizeUuid(id);
-    if (!isValidUuid(requestId)) {
+    if (!isValidUuid(id)) {
       return NextResponse.json({ error: 'Invalid request ID' }, { status: 400 });
     }
 
     const body = await req.json();
-    const { escalationReason, priority } = body;
-
-    // Try to get authenticated client from bearer token first, then fall back to cookies
-    let supabase = getSupabaseFromRequest(req);
-    if (!supabase) {
-      supabase = await createServerSideClient();
+    const reason = typeof body.escalationReason === 'string' ? body.escalationReason.trim() : '';
+    if (!reason) {
+      return NextResponse.json({ error: 'A handoff note is required' }, { status: 400 });
     }
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)) {
-      return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
-    }
-
+    const supabase = getSupabaseFromRequest(req) ?? await createServerSideClient();
     const ctx = await getProfile(supabase, req);
-
-    if (!ctx?.profile || (!isValidUuid(ctx.profile.organization_id) && ctx.profile.role !== 'super_admin')) {
+    if (!ctx?.profile || !ctx.profile.organization_id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    if (ctx.profile.role === 'super_admin') {
-      return NextResponse.json({ error: 'General Admins approve requests and cannot escalate them' }, { status: 403 });
+    const isMechanicalHandler = ctx.profile.role === 'mechanical_request_handler';
+    const isElectricalHandler = ctx.profile.role === 'electrical_mechanical_handler';
+    if (!isMechanicalHandler && !isElectricalHandler) {
+      return NextResponse.json({ error: 'Only request handlers can forward requests' }, { status: 403 });
+    }
+    if (!(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY)) {
+      return NextResponse.json({ error: 'Request routing requires SUPABASE_SERVICE_ROLE_KEY' }, { status: 503 });
     }
 
-    // Get request details
     const { data: request, error: fetchError } = await supabase
       .from('requests')
-      .select('id, title, organization_id, created_by, status, priority')
-      .eq('id', requestId)
-      .single();
-
-    if (fetchError || !request) {
+      .select('id, title, organization_id, created_by, status, priority, workflow_stage')
+      .eq('id', id)
+      .maybeSingle();
+    if (fetchError) {
+      return NextResponse.json({ error: fetchError.message }, { status: 500 });
+    }
+    if (!request) {
       return NextResponse.json({ error: 'Request not found' }, { status: 404 });
     }
-
-    // Only org admin can escalate their own org's requests. Was a
-    // string-truthy check — isValidUuid catches malformed values too, not
-    // just empty ones.
-    if (!isValidUuid(request.organization_id)) {
-      console.warn('escalate request missing organization_id for request', id);
-      return NextResponse.json({ error: 'Unable to escalate request' }, { status: 500 });
+    if (request.organization_id !== ctx.profile.organization_id) {
+      return NextResponse.json({ error: 'You can only forward requests from your organization' }, { status: 403 });
     }
 
-    if (ctx.profile.role !== 'super_admin' && request.organization_id !== ctx.profile.organization_id) {
-      return NextResponse.json({ error: 'Unauthorized: Can only escalate requests from your organization' }, { status: 403 });
+    const expectedStage = isMechanicalHandler ? 'mechanical' : 'electrical_mechanical';
+    const validStatus = isMechanicalHandler
+      ? request.status === 'pending'
+      : request.status === 'escalated';
+    const validStage = request.workflow_stage === expectedStage || (isMechanicalHandler && request.workflow_stage === null);
+    if (!validStatus || !validStage) {
+      return NextResponse.json({ error: 'This request is not awaiting your review' }, { status: 409 });
     }
 
-    // Check if request is already escalated
-    if (request.status === 'escalated') {
-      return NextResponse.json({ error: 'Request is already escalated' }, { status: 400 });
-    }
-
-    // Validate priority if provided
-    const validPriorities = ['low', 'medium', 'high', 'urgent'];
-    if (priority && !validPriorities.includes(priority)) {
+    if (body.priority && !['low', 'medium', 'high', 'urgent'].includes(body.priority)) {
       return NextResponse.json({ error: 'Invalid priority' }, { status: 400 });
     }
 
-    // Update request status to escalated
+    const nextRole = isMechanicalHandler ? 'electrical_mechanical_handler' : 'agency_admin';
+    const reader = getServiceRoleClient(supabase);
+    const recipientQuery = reader
+      .from('profiles')
+      .select('id')
+      .eq('organization_id', request.organization_id)
+      .eq('role', nextRole);
+    const { data: recipients, error: recipientsError } = await recipientQuery;
+    if (recipientsError) {
+      return NextResponse.json({ error: 'Unable to find the next request handlers' }, { status: 500 });
+    }
+    if (!recipients?.length) {
+      return NextResponse.json({
+        error: isMechanicalHandler
+          ? 'No Electrical & Mechanical Request Handler is assigned to this organization'
+          : 'No Agency Admin is assigned to receive this request',
+      }, { status: 409 });
+    }
+
+    const nextStage = isMechanicalHandler ? 'electrical_mechanical' : 'agency_admin';
+    const updatePayload: Record<string, unknown> = {
+      workflow_stage: nextStage,
+      escalation_reason: reason,
+      updated_at: new Date().toISOString(),
+    };
+    if (isMechanicalHandler) {
+      updatePayload.status = 'escalated';
+      updatePayload.priority = body.priority || request.priority;
+      updatePayload.escalated_at = new Date().toISOString();
+      updatePayload.escalated_by = ctx.user.id;
+    }
+
     const { data: updated, error: updateError } = await supabase
       .from('requests')
-      .update({
-        status: 'escalated',
-        escalation_reason: escalationReason || null,
-        priority: priority || request.priority,
-        escalated_at: new Date().toISOString(),
-        escalated_by: ctx.user?.id,
-      })
-      .eq('id', requestId)
+      .update(updatePayload)
+      .eq('id', id)
       .select()
       .single();
-
     if (updateError) {
-      return NextResponse.json({ error: (updateError as any)?.message || 'Failed to escalate request' }, { status: 500 });
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
-    // Create an audit log entry
-    try {
-      await supabase.from('request_audit_logs').insert({
-        request_id: requestId,
-        action: 'escalated',
-        actor_id: ctx.user?.id,
-        timestamp: new Date().toISOString(),
-        details: {
-          reason: escalationReason,
-          previous_status: request.status,
-          new_status: 'escalated',
-        },
-      });
-    } catch (err: any) {
-      // Log but don't fail if audit log fails
-      console.error('Failed to create audit log:', err);
+    const organizationProfiles = await reader
+      .from('profiles')
+      .select('id')
+      .eq('organization_id', request.organization_id)
+      .in('role', ORGANIZATION_ADMIN_ROLES);
+    if (organizationProfiles.error) {
+      console.error('Request handoff organization user lookup failed', organizationProfiles.error);
     }
 
-    // Also write to the central audit_logs table using the helper
-    try {
-      await writeAudit(supabase, req, {
-        action: 'escalated',
-        table_name: 'requests',
-        record_id: requestId,
-        old_values: { previous_status: request.status },
-        new_values: { status: 'escalated', priority: priority || request.priority },
-        user_id: ctx.user?.id ?? null,
-      });
-    } catch (err) {
-      console.warn('Failed to write central audit log for escalate:', err);
-    }
+    const notifiedIds = new Set<string>([
+      ...recipients.map((recipient: { id: string }) => recipient.id),
+      ...(organizationProfiles.data ?? []).map((profile: { id: string }) => profile.id),
+      ...(request.created_by ? [request.created_by] : []),
+    ]);
 
-    return NextResponse.json({ request: updated }, { status: 200 });
-  } catch (err) {
-    console.error('Request escalation error', err);
-    return NextResponse.json({ error: 'Unable to escalate request' }, { status: 500 });
+    const targetLabel = isMechanicalHandler ? 'Electrical & Mechanical Handler' : 'Agency Admin';
+    const notificationsSent = await writeNotifications(supabase, Array.from(notifiedIds).map((userId) => ({
+      user_id: userId,
+      type: 'request_handoff',
+      title: 'Request forwarded',
+      message: `"${request.title}" was forwarded to the ${targetLabel} for review. Note: ${reason}`,
+      related_request_id: id,
+    })));
+
+    await writeAudit(supabase, req, {
+      action: isMechanicalHandler ? 'forwarded_to_electrical_mechanical' : 'forwarded_to_agency_admin',
+      table_name: 'requests',
+      record_id: id,
+      old_values: { status: request.status, workflow_stage: request.workflow_stage },
+      new_values: { status: updated.status, workflow_stage: nextStage },
+      user_id: ctx.user.id,
+    });
+
+    return NextResponse.json({ request: updated, notificationsSent });
+  } catch (error) {
+    console.error('Request handoff failed', error);
+    return NextResponse.json({ error: 'Unable to forward request' }, { status: 500 });
   }
 }

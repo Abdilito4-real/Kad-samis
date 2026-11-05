@@ -86,7 +86,7 @@ export default function LoginPageContent() {
     toast.success("Signed in successfully", {
       description: "Preparing your secure workspace…",
     });
-    window.setTimeout(() => router.push("/auth/loading"), 900);
+    router.replace("/auth/loading");
   };
 
   /** `silent` suppresses the failure toast — used by the mobile

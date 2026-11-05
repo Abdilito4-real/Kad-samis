@@ -10,6 +10,9 @@ export type UserRole =
   | "procurement_officer"
   | "finance_officer"
   | "operational_manager"
+  | "mechanical_request_handler"
+  | "electrical_mechanical_handler"
+  | "custodian"
   | "read_only_user";
 
 export interface User {

@@ -21,6 +21,11 @@ export async function GET(req: Request) {
     }
 
     const isSuperAdmin = ctx.profile.role === 'super_admin';
+    const isOrganizationAdmin = ['agency_admin', 'ministry_admin', 'department_head'].includes(ctx.profile.role);
+    if (!isSuperAdmin && !isOrganizationAdmin) {
+      return NextResponse.json({ error: 'Dashboard overview is only available to admins' }, { status: 403 });
+    }
+
     const organizationId = orgId ?? (isSuperAdmin ? null : ctx.profile.organization_id);
 
     if (orgId && !isSuperAdmin && ctx.profile.organization_id !== orgId) {
@@ -42,7 +47,7 @@ export async function GET(req: Request) {
 
     // Organization users are always scoped to their own organization.
     if (organizationId) {
-      const [organizationRes, requestsRes, assetsRes] = await Promise.all([
+      const [organizationRes, requestsRes, assetsRes, agencyAdminRequestsRes] = await Promise.all([
         queryClient
           .from('organizations')
           .select('*, profiles(id,email,role), requests(id,status)')
@@ -60,12 +65,20 @@ export async function GET(req: Request) {
           .is('deleted_at', null)
           .order('created_at', { ascending: false })
           .limit(8),
+        ctx.profile.role === 'agency_admin'
+          ? queryClient
+              .from('requests')
+              .select('id', { count: 'exact', head: true })
+              .eq('organization_id', organizationId)
+              .eq('workflow_stage', 'agency_admin')
+              .eq('status', 'escalated')
+          : Promise.resolve({ count: 0, error: null }),
       ]);
 
-      if (organizationRes.error || requestsRes.error || assetsRes.error) {
+      if (organizationRes.error || requestsRes.error || assetsRes.error || agencyAdminRequestsRes.error) {
         console.error(
           'Dashboard organization query error:',
-          organizationRes.error || requestsRes.error || assetsRes.error
+          organizationRes.error || requestsRes.error || assetsRes.error || agencyAdminRequestsRes.error
         );
         return NextResponse.json({ error: 'Failed to load organization dashboard' }, { status: 500 });
       }
@@ -87,6 +100,7 @@ export async function GET(req: Request) {
           usersCount,
           requestsCount,
           pendingRequests,
+          agencyAdminPendingRequests: agencyAdminRequestsRes.count ?? 0,
           requests,
           assetsCount: assetsRes.count ?? 0,
           assets,

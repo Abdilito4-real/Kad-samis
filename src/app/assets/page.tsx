@@ -53,9 +53,9 @@ export default function AssetsPage() {
   const router = useRouter();
   const { user } = useAuth();
   const isSuperAdmin = user?.roleId === "super_admin";
-  // Only org-scoped roles submit requests — super_admin approves them and
-  // Operational Managers (no organization) don't file them.
-  const canRequest = Boolean(user?.organizationId);
+  const isCustodian = user?.roleId === "custodian";
+  // Custodians only upload assets; they do not edit assets or submit requests.
+  const canRequest = Boolean(user?.organizationId) && !isCustodian;
 
   useEffect(() => {
     if (!isSuperAdmin) return;
@@ -480,7 +480,7 @@ export default function AssetsPage() {
                           </div>
                         </div>
                         <div className="flex shrink-0 items-center gap-3 sm:hidden">
-                          {isSuperAdmin ? (
+                          {isSuperAdmin && (
                             <Button
                               type="button"
                               variant="ghost"
@@ -493,7 +493,8 @@ export default function AssetsPage() {
                             >
                               {deletingAssetId === asset.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                             </Button>
-                          ) : canRequest && (
+                          )}
+                          {canRequest && (
                             <RequestAssetDialog
                               assetId={asset.id}
                               assetName={asset.name}
@@ -505,7 +506,7 @@ export default function AssetsPage() {
                             />
                           )}
                           <Link href={assetLinkHref(asset)} className="text-sm font-medium text-primary hover:underline">
-                            {isSuperAdmin ? "View asset" : "Edit"}
+                            {isSuperAdmin || isCustodian ? "View asset" : "Edit"}
                           </Link>
                         </div>
                       </div>
@@ -526,7 +527,7 @@ export default function AssetsPage() {
                         )}
                       </div>
                       <div className="hidden items-center justify-end gap-2 sm:flex">
-                        {isSuperAdmin ? (
+                        {isSuperAdmin && (
                           <Button
                             type="button"
                             variant="outline"
@@ -537,14 +538,15 @@ export default function AssetsPage() {
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete
                           </Button>
-                        ) : canRequest && (
+                        )}
+                        {canRequest && (
                           <RequestAssetDialog
                             assetId={asset.id}
                             assetName={asset.name}
                             assetNumber={asset.asset_number}
                           />
                         )}
-                        {isSuperAdmin ? (
+                        {isSuperAdmin || isCustodian ? (
                           <Link href={assetLinkHref(asset)} className="text-sm font-medium text-primary hover:underline">View asset</Link>
                         ) : (
                           <Link href={assetLinkHref(asset)} className="text-sm font-medium text-primary hover:underline">Edit</Link>

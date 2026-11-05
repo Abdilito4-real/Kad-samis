@@ -24,8 +24,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const ctx = await getProfile(supabase, req);
 
-    if (!ctx?.profile || ctx.profile.role !== 'super_admin') {
-      return NextResponse.json({ error: 'Only General Admins can reject requests' }, { status: 403 });
+    if (!ctx?.profile || !['super_admin', 'agency_admin'].includes(ctx.profile.role)) {
+      return NextResponse.json({ error: 'Only Agency Admins can reject requests in their receiving queue' }, { status: 403 });
     }
 
     // Get request details
@@ -50,7 +50,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         .from('profiles')
         .select('id')
         .eq('organization_id', requestOrgId)
-        .in('role', ['agency_admin', 'ministry_admin', 'department_head']);
+        .in('role', [
+          'agency_admin',
+          'ministry_admin',
+          'department_head',
+          'mechanical_request_handler',
+          'electrical_mechanical_handler',
+        ]);
 
       if (orgAdminResult.data) {
         organizationAdmins = orgAdminResult.data as { id: string }[];
@@ -60,7 +66,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     // Check if request is in a state that can be rejected
-    if (!['pending', 'escalated'].includes(request.status)) {
+    const isAgencyAdminQueue =
+      ctx.profile.role === 'agency_admin' &&
+      request.workflow_stage === 'agency_admin' &&
+      request.status === 'escalated' &&
+      request.organization_id === ctx.profile.organization_id;
+    const isLegacyGeneralAdminQueue =
+      ctx.profile.role === 'super_admin' &&
+      ((request.workflow_stage === 'general_admin' && request.status === 'escalated') ||
+        (!request.workflow_stage && ['pending', 'escalated'].includes(request.status)));
+    if (!isAgencyAdminQueue && !isLegacyGeneralAdminQueue) {
       return NextResponse.json({ error: `Cannot reject a ${request.status} request` }, { status: 400 });
     }
 
@@ -90,8 +105,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       ...(organizationAdmins ?? []).map((admin) => normalizeUuid(admin.id)),
     ].filter((recipientId): recipientId is string => isValidUuid(recipientId))));
 
-    if (recipientIds.length > 0) {
-      await writeNotifications(
+    const notificationsSent = recipientIds.length > 0
+      ? await writeNotifications(
         supabase,
         recipientIds.map((userId) => ({
           user_id: userId,
@@ -100,8 +115,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           message: `Your request "${request.title}" has been rejected`,
           related_request_id: requestId,
         }))
-      );
-    }
+      )
+      : false;
 
     // Write audit record for rejection
     try {
@@ -117,7 +132,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       console.warn('Failed to write audit for rejection:', err);
     }
 
-    return NextResponse.json({ request: updated }, { status: 200 });
+    return NextResponse.json({ request: updated, notificationsSent }, { status: 200 });
   } catch (err) {
     console.error('Request rejection error', err);
     return NextResponse.json({ error: 'Unable to reject request' }, { status: 500 });

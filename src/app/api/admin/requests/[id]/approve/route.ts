@@ -24,15 +24,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const ctx = await getProfile(supabase, req);
 
-    // Only super_admin can approve requests
-    if (!ctx?.profile || ctx.profile.role !== 'super_admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    if (!ctx?.profile || !['super_admin', 'agency_admin'].includes(ctx.profile.role)) {
+      return NextResponse.json({ error: 'Only Agency Admins can approve requests in their receiving queue' }, { status: 403 });
     }
 
     // Get request details to notify the organization
     const { data: request, error: fetchError } = await supabase
       .from('requests')
-      .select('id, title, organization_id, created_by, status')
+      .select('id, title, organization_id, created_by, status, workflow_stage')
       .eq('id', requestId)
       .single();
 
@@ -40,8 +39,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ error: 'Request not found' }, { status: 404 });
     }
 
-    // Only allow approving pending or escalated requests
-    if (!['pending', 'escalated'].includes((request as any).status)) {
+    const isAgencyAdminQueue =
+      ctx.profile.role === 'agency_admin' &&
+      request.workflow_stage === 'agency_admin' &&
+      request.status === 'escalated' &&
+      request.organization_id === ctx.profile.organization_id;
+    const isLegacyGeneralAdminQueue =
+      ctx.profile.role === 'super_admin' &&
+      ((request.workflow_stage === 'general_admin' && request.status === 'escalated') ||
+        (!request.workflow_stage && ['pending', 'escalated'].includes(request.status)));
+    if (!isAgencyAdminQueue && !isLegacyGeneralAdminQueue) {
       return NextResponse.json({ error: `Cannot approve a ${ (request as any).status } request` }, { status: 400 });
     }
 
@@ -51,16 +58,22 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     // for requestId, applied consistently here too.
     const requestOrgId = isValidUuid(request.organization_id) ? request.organization_id : null;
 
-    let organizationAdmins: { id: string }[] = [];
+    let organizationUsers: { id: string }[] = [];
     if (requestOrgId) {
-      const orgAdminResult = await supabase
+      const orgUserResult = await supabase
         .from('profiles')
         .select('id')
         .eq('organization_id', requestOrgId)
-        .in('role', ['agency_admin', 'ministry_admin', 'department_head']);
+        .in('role', [
+          'agency_admin',
+          'ministry_admin',
+          'department_head',
+          'mechanical_request_handler',
+          'electrical_mechanical_handler',
+        ]);
 
-      if (orgAdminResult.data) {
-        organizationAdmins = orgAdminResult.data as { id: string }[];
+      if (orgUserResult.data) {
+        organizationUsers = orgUserResult.data as { id: string }[];
       }
     } else {
       console.warn('approve request missing organization_id for request', id);
@@ -85,6 +98,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     // Create notification for the organization user
     const notificationMessage = `Your request "${request.title}" has been approved`;
     const notificationType = 'approval';
+    let notificationsSent = false;
 
     try {
       // normalizeUuid only strips whitespace and rejects empty strings — it
@@ -94,11 +108,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       // with isValidUuid closes that gap.
       const recipientIds = Array.from(new Set([
         normalizeUuid(request.created_by),
-        ...(organizationAdmins ?? []).map((admin: { id: string }) => normalizeUuid(admin.id)),
+        ...(organizationUsers ?? []).map((profile: { id: string }) => normalizeUuid(profile.id)),
       ].filter((recipientId): recipientId is string => isValidUuid(recipientId))));
 
       if (recipientIds.length > 0) {
-        await writeNotifications(
+        notificationsSent = await writeNotifications(
           supabase,
           recipientIds.map((userId) => ({
             user_id: userId,
@@ -128,7 +142,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       console.warn('Failed to write audit record for approval:', err);
     }
 
-    return NextResponse.json({ request: updated }, { status: 200 });
+    return NextResponse.json({ request: updated, notificationsSent }, { status: 200 });
   } catch (err) {
     console.error('Request approval error', err);
     return NextResponse.json({ error: 'Unable to process request' }, { status: 500 });

@@ -7,8 +7,9 @@ import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, CheckCircle, Clock, XCircle, ArrowUp, Send, ChevronRight, Wrench } from "lucide-react";
+import { AlertCircle, CheckCircle, Clock, XCircle, ArrowUp, Send, ChevronRight, Wrench, Bell } from "lucide-react";
 import { StageProgressBar } from "@/components/requests/StageProgressBar";
+import { ManualMdaRequestDialog } from "@/components/requests/ManualMdaRequestDialog";
 import {
   ResponsiveList,
   ResponsiveListRow,
@@ -43,10 +44,13 @@ interface Request {
   escalated_at?: string;
   escalation_reason?: string;
   current_stage?: "assigned" | "monitoring" | "in_progress" | "completed" | null;
+  workflow_stage?: "mechanical" | "electrical_mechanical" | "agency_admin" | "general_admin" | null;
+  source_mda?: string | null;
 }
 
 interface RequestHistoryProps {
   orgId?: string;
+  queue?: "agency_admin";
 }
 
 const statusIcons: Record<string, React.ReactNode> = {
@@ -86,10 +90,11 @@ const typeLabels: Record<string, string> = {
   general: "General Request",
 };
 
-export function RequestHistory({ orgId }: RequestHistoryProps) {
+export function RequestHistory({ orgId, queue }: RequestHistoryProps) {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const isSuperAdmin = user?.roleId === "super_admin";
+  const isMechanicalHandler = user?.roleId === "mechanical_request_handler";
+  const isElectricalHandler = user?.roleId === "electrical_mechanical_handler";
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<
@@ -99,6 +104,7 @@ export function RequestHistory({ orgId }: RequestHistoryProps) {
   const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
   const [escalationReason, setEscalationReason] = useState("");
   const [isEscalating, setIsEscalating] = useState(false);
+  const [remindingRequestId, setRemindingRequestId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadRequests = async () => {
@@ -118,6 +124,7 @@ export function RequestHistory({ orgId }: RequestHistoryProps) {
 
         const params = new URLSearchParams();
         if (orgId) params.append("orgId", orgId);
+        if (queue) params.append("queue", queue);
         if (filter !== "all") params.append("status", filter);
 
         const response = await fetch(`/api/admin/requests?${params.toString()}`, {
@@ -149,7 +156,7 @@ export function RequestHistory({ orgId }: RequestHistoryProps) {
     if (!authLoading && user) {
       loadRequests();
     }
-  }, [authLoading, user, orgId, filter]);
+  }, [authLoading, user, orgId, queue, filter]);
 
   const handleEscalateClick = (request: Request) => {
     setSelectedRequest(request);
@@ -196,9 +203,16 @@ export function RequestHistory({ orgId }: RequestHistoryProps) {
         throw new Error(error.error || "Failed to escalate request");
       }
 
-      toast.success("Request escalated", {
-        description: "Your request has been escalated to General Admin.",
-      });
+      const handoffResult = await response.json();
+      if (handoffResult.notificationsSent === false) {
+        toast.warning("Request forwarded, but the next handler could not be notified.");
+      } else {
+        toast.success("Request forwarded", {
+          description: isMechanicalHandler
+            ? "The Electrical & Mechanical Handler has been notified."
+            : "Agency Admin has been notified.",
+        });
+      }
 
       setEscalateDialogOpen(false);
       setSelectedRequest(null);
@@ -231,6 +245,55 @@ export function RequestHistory({ orgId }: RequestHistoryProps) {
     }
   };
 
+  const handleReminder = async (request: Request) => {
+    setRemindingRequestId(request.id);
+    try {
+      const supabase = createClient();
+      const { data: { session } } = supabase
+        ? await supabase.auth.getSession()
+        : { data: { session: null } };
+      if (!session) throw new Error("No authenticated session. Please log in.");
+
+      const response = await fetch(`/api/admin/requests/${request.id}/remind`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + session.access_token,
+        },
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Failed to send reminder");
+      if (result.notificationsSent === false) {
+        toast.warning("Reminder could not be delivered.");
+      } else {
+        toast.success(isMechanicalHandler ? "Electrical & Mechanical Handler reminded" : "Agency Admin reminded");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to send reminder");
+    } finally {
+      setRemindingRequestId(null);
+    }
+  };
+
+  const canForward = (request: Request) =>
+    (isMechanicalHandler && request.status === "pending" && (!request.workflow_stage || request.workflow_stage === "mechanical")) ||
+    (isElectricalHandler && request.status === "escalated" && request.workflow_stage === "electrical_mechanical");
+
+  const canRemind = (request: Request) =>
+    (isMechanicalHandler && request.status === "escalated" && request.workflow_stage === "electrical_mechanical") ||
+    (isElectricalHandler && request.status === "escalated" && request.workflow_stage === "agency_admin");
+
+  const getRequestStageLabel = (request: Request) => {
+    if (request.workflow_stage === "agency_admin" && request.status === "approved") return "Approved by Agency Admin";
+    if (request.workflow_stage === "agency_admin" && request.status === "rejected") return "Rejected by Agency Admin";
+    if (request.workflow_stage === "mechanical") return "Mechanical Review";
+    if (request.workflow_stage === "electrical_mechanical") return "Electrical & Mechanical Review";
+    if (request.workflow_stage === "agency_admin") return "Awaiting Agency Admin";
+    if (request.workflow_stage === "general_admin") return "Awaiting General Admin";
+    return statusLabels[request.status] ?? request.status.charAt(0).toUpperCase() + request.status.slice(1);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
@@ -247,6 +310,16 @@ export function RequestHistory({ orgId }: RequestHistoryProps) {
           </Button>
         ))}
       </div>
+      {isMechanicalHandler && (
+        <div className="flex justify-end">
+          <ManualMdaRequestDialog
+            onCreated={(request) => {
+              setFilter("all");
+              setRequests((current) => [request, ...current]);
+            }}
+          />
+        </div>
+      )}
 
       {loading ? (
         <ResponsiveListSkeleton rows={4} detailCols={3} />
@@ -287,7 +360,7 @@ export function RequestHistory({ orgId }: RequestHistoryProps) {
                   {request.priority.charAt(0).toUpperCase() + request.priority.slice(1)} Priority
                 </Badge>
                 <Badge className={statusColors[request.status]}>
-                  {statusLabels[request.status] ?? request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                  {getRequestStageLabel(request)}
                 </Badge>
               </div>
 
@@ -295,11 +368,14 @@ export function RequestHistory({ orgId }: RequestHistoryProps) {
                 <StageProgressBar currentStage={request.current_stage} />
               )}
 
-              <ResponsiveListDetailGrid cols={3}>
+              <ResponsiveListDetailGrid cols={request.source_mda ? 4 : 3}>
                 <ResponsiveListField
                   label="Organization"
                   value={request.organizations?.name || "Organization unavailable"}
                 />
+                {request.source_mda && (
+                  <ResponsiveListField label="Originating MDA" value={request.source_mda} />
+                )}
                 <ResponsiveListField
                   label="Submitted"
                   value={new Date(request.created_at).toLocaleDateString()}
@@ -313,13 +389,13 @@ export function RequestHistory({ orgId }: RequestHistoryProps) {
               {request.notes && (
                 <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-900/30">
                   <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">
-                    General Admin Notes
+                    Admin Notes
                   </p>
                   <p className="text-sm text-slate-900 dark:text-slate-50">{request.notes}</p>
                 </div>
               )}
 
-              {!isSuperAdmin && request.status === "pending" && (
+              {canForward(request) && (
                 <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
                   <Button
                     onClick={(e) => {
@@ -331,7 +407,24 @@ export function RequestHistory({ orgId }: RequestHistoryProps) {
                     className="gap-2 hover:border-purple-400 hover:text-purple-600"
                   >
                     <ArrowUp className="h-4 w-4" />
-                    Escalate to General Admin
+                    {isMechanicalHandler ? "Forward to Electrical & Mechanical" : "Send to Agency Admin"}
+                  </Button>
+                </div>
+              )}
+              {canRemind(request) && (
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
+                  <Button
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void handleReminder(request);
+                    }}
+                    disabled={remindingRequestId === request.id}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <Bell className="h-4 w-4" />
+                    {remindingRequestId === request.id ? "Sending reminder..." : "Send reminder"}
                   </Button>
                 </div>
               )}
@@ -343,9 +436,11 @@ export function RequestHistory({ orgId }: RequestHistoryProps) {
       <Dialog open={escalateDialogOpen} onOpenChange={setEscalateDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Escalate Request</DialogTitle>
+            <DialogTitle>Forward Request</DialogTitle>
             <DialogDescription>
-              Explain why this request needs escalation to General Admin
+              {isMechanicalHandler
+                ? "Add a note for the Electrical & Mechanical Handler."
+                : "Add a note for Agency Admin."}
             </DialogDescription>
           </DialogHeader>
 
@@ -356,12 +451,12 @@ export function RequestHistory({ orgId }: RequestHistoryProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="reason">Escalation Reason</Label>
+              <Label htmlFor="reason">Handoff note</Label>
               <Textarea
                 id="reason"
                 value={escalationReason}
                 onChange={(e) => setEscalationReason(e.target.value)}
-                placeholder="Explain why this request needs immediate attention from General Admin..."
+                placeholder="Add context for the next reviewer..."
                 rows={4}
                 className="resize-none"
               />
@@ -379,11 +474,11 @@ export function RequestHistory({ orgId }: RequestHistoryProps) {
                 onClick={handleEscalateSubmit}
                 disabled={!escalationReason.trim()}
                 isLoading={isEscalating}
-                loadingText="Escalating..."
+                loadingText="Forwarding..."
                 className="flex-1 bg-purple-600 hover:bg-purple-700"
               >
                 <Send className="mr-2 h-4 w-4" />
-                Escalate
+                Forward request
               </Button>
             </div>
           </div>

@@ -31,6 +31,7 @@ const ASSET_IMPORT_ROLES = new Set([
   'ministry_admin',
   'department_head',
   'asset_officer',
+  'custodian',
 ]);
 
 async function getProfile(supabase: any, req?: Request) {

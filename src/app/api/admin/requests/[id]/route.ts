@@ -17,7 +17,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     const ctx = await getProfile(supabase, req);
 
-    if (!ctx?.profile) {
+    if (!ctx?.profile || ctx.profile.role === 'custodian') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 

@@ -56,7 +56,7 @@ export function RequestAssetDialog({
           <DialogHeader>
             <DialogTitle>Request Maintenance / Repair</DialogTitle>
             <DialogDescription>
-              Describe the issue for General Admin to review before it is routed to an Operational Manager.
+              Describe the issue for Agency Admin to review before it is routed to an Operational Manager.
             </DialogDescription>
           </DialogHeader>
           <RequestSubmissionForm

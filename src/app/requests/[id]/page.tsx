@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ArrowLeft, CheckCircle, XCircle, AlertCircle, ChevronDown, UserCog } from 'lucide-react';
+import { Loader2, ArrowLeft, CheckCircle, XCircle, AlertCircle, ChevronDown, UserCog, Send } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -30,6 +30,7 @@ interface Request {
   type: string;
   priority: string;
   status: 'pending' | 'approved' | 'rejected' | 'escalated' | 'in_operation' | 'completed';
+  workflow_stage?: 'mechanical' | 'electrical_mechanical' | 'agency_admin' | 'general_admin' | null;
   notes?: string;
   created_at: string;
   updated_at: string;
@@ -38,6 +39,7 @@ interface Request {
   escalated_at?: string;
   escalation_reason?: string;
   organization_id: string;
+  source_mda?: string | null;
   current_stage?: 'assigned' | 'monitoring' | 'in_progress' | 'completed' | null;
   assigned_operator?: { id: string; email: string; username?: string | null } | null;
   request_operations?: {
@@ -88,7 +90,7 @@ export default function RequestDetailPage() {
   const [viewerRole, setViewerRole] = useState<string | null>(null);
   const [viewerId, setViewerId] = useState<string | null>(null);
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
-  const [actionType, setActionType] = useState<'approve' | 'reject'>('approve');
+  const [actionType, setActionType] = useState<'approve' | 'reject' | 'forward'>('approve');
   const [notes, setNotes] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   // Collapsed by default once a request is past pending — the stage is the
@@ -150,7 +152,19 @@ export default function RequestDetailPage() {
   }, [requestId]);
 
   const handleAction = async () => {
-    if (!request || !isSuperAdmin) return;
+    if (!request) return;
+    const canReviewRequest =
+      (viewerRole === 'agency_admin' &&
+        request.workflow_stage === 'agency_admin' &&
+        request.status === 'escalated') ||
+      (isSuperAdmin &&
+        ((request.workflow_stage === 'general_admin' && request.status === 'escalated') ||
+          (!request.workflow_stage && ['pending', 'escalated'].includes(request.status))));
+    if (actionType !== 'forward' && !canReviewRequest) return;
+    if (actionType === 'forward' && !notes.trim()) {
+      toast.error('A handoff note is required');
+      return;
+    }
 
     setIsProcessing(true);
     try {
@@ -160,14 +174,18 @@ export default function RequestDetailPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('No authenticated session');
 
-      const response = await fetch(`/api/admin/requests/${request.id}/${actionType}`, {
+      const response = await fetch(actionType === 'forward'
+        ? `/api/admin/requests/${request.id}/escalate`
+        : `/api/admin/requests/${request.id}/${actionType}`, {
         method: 'PATCH',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ notes: notes.trim() || null }),
+        body: JSON.stringify(actionType === 'forward'
+          ? { escalationReason: notes.trim(), priority: request.priority }
+          : { notes: notes.trim() || null }),
       });
 
       if (!response.ok) {
@@ -186,10 +204,44 @@ export default function RequestDetailPage() {
       setRequest(data.request);
       setActionDialogOpen(false);
       setNotes('');
-      toast.success(`Request ${actionType}d successfully`);
+      if (data.notificationsSent === false) {
+        toast.warning('Action completed, but a notification could not be delivered.');
+      } else {
+        toast.success(actionType === 'forward' ? 'Request forwarded successfully' : `Request ${actionType}d successfully`);
+      }
     } catch (err: any) {
       console.error(`Request ${actionType} error:`, err);
       toast.error(`Failed to ${actionType} request`, { description: err.message });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReminder = async () => {
+    if (!request) return;
+    setIsProcessing(true);
+    try {
+      const supabase = createClient();
+      const { data: { session } } = supabase
+        ? await supabase.auth.getSession()
+        : { data: { session: null } };
+      if (!session) throw new Error('No authenticated session');
+      const response = await fetch(`/api/admin/requests/${request.id}/remind`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + session.access_token,
+        },
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Unable to send reminder');
+      if (data.notificationsSent === false) {
+        toast.warning('Reminder could not be delivered.');
+      } else {
+        toast.success('Reminder sent');
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to send reminder');
     } finally {
       setIsProcessing(false);
     }
@@ -216,11 +268,33 @@ export default function RequestDetailPage() {
     );
   }
 
+  const canForward =
+    (viewerRole === 'mechanical_request_handler' &&
+      request.status === 'pending' &&
+      (!request.workflow_stage || request.workflow_stage === 'mechanical')) ||
+    (viewerRole === 'electrical_mechanical_handler' &&
+      request.status === 'escalated' &&
+      request.workflow_stage === 'electrical_mechanical');
+  const canRemind =
+    (viewerRole === 'mechanical_request_handler' &&
+      request.status === 'escalated' &&
+      request.workflow_stage === 'electrical_mechanical') ||
+    (viewerRole === 'electrical_mechanical_handler' &&
+      request.status === 'escalated' &&
+      request.workflow_stage === 'agency_admin');
+  const canAdminAct =
+    (viewerRole === 'agency_admin' &&
+      request.workflow_stage === 'agency_admin' &&
+      request.status === 'escalated') ||
+    (isSuperAdmin &&
+      ((request.workflow_stage === 'general_admin' && request.status === 'escalated') ||
+        (!request.workflow_stage && ['pending', 'escalated'].includes(request.status))));
+
   return (
     <div className="min-h-screen bg-slate-50 p-4 dark:bg-slate-950 sm:p-6">
       <div className="max-w-3xl mx-auto">
         <Button
-          onClick={() => router.push('/requests')}
+          onClick={() => router.push(viewerRole === 'agency_admin' ? '/requests/received' : '/requests')}
           variant="ghost"
           className="mb-6 gap-2"
         >
@@ -241,7 +315,19 @@ export default function RequestDetailPage() {
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
               <Badge className={statusColors[request.status]}>
-                {statusLabels[request.status] ?? request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                {request.workflow_stage === 'agency_admin' && request.status === 'approved'
+                  ? 'Approved by Agency Admin'
+                  : request.workflow_stage === 'agency_admin' && request.status === 'rejected'
+                    ? 'Rejected by Agency Admin'
+                    : request.workflow_stage === 'mechanical'
+                  ? 'Mechanical Review'
+                  : request.workflow_stage === 'electrical_mechanical'
+                    ? 'Electrical & Mechanical Review'
+                    : request.workflow_stage === 'agency_admin'
+                      ? 'Awaiting Agency Admin'
+                    : request.workflow_stage === 'general_admin'
+                      ? 'Awaiting General Admin'
+                      : statusLabels[request.status] ?? request.status.charAt(0).toUpperCase() + request.status.slice(1)}
               </Badge>
               <Badge className={priorityColors[request.priority]}>
                 {request.priority.charAt(0).toUpperCase() + request.priority.slice(1)}
@@ -291,6 +377,12 @@ export default function RequestDetailPage() {
                   {request.organizations?.name || "Organization unavailable"}
                 </p>
               </div>
+              {request.source_mda && (
+                <div>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Originating MDA</p>
+                  <p className="font-semibold text-slate-900 dark:text-slate-50">{request.source_mda}</p>
+                </div>
+              )}
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Priority</p>
                 <p className="font-semibold text-slate-900 dark:text-slate-50">
@@ -331,8 +423,34 @@ export default function RequestDetailPage() {
               </div>
             )}
 
-            {/* Super Admin Actions */}
-            {isSuperAdmin && request.status === 'pending' && (
+            {(canForward || canRemind) && (
+              <div className="flex flex-wrap gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
+                {canForward && (
+                  <Button
+                    onClick={() => {
+                      setActionType('forward');
+                      setNotes('');
+                      setActionDialogOpen(true);
+                    }}
+                    className="gap-2"
+                  >
+                    <Send className="h-4 w-4" />
+                    {viewerRole === 'mechanical_request_handler'
+                      ? 'Forward to Electrical & Mechanical'
+                      : 'Send to Agency Admin'}
+                  </Button>
+                )}
+                {canRemind && (
+                  <Button variant="outline" onClick={handleReminder} disabled={isProcessing} className="gap-2">
+                    <AlertCircle className="h-4 w-4" />
+                    Send reminder
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Agency Admin actions */}
+            {canAdminAct && (
               <div className="flex gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
                 <Button
                   onClick={() => {
@@ -373,9 +491,15 @@ export default function RequestDetailPage() {
       <Dialog open={actionDialogOpen} onOpenChange={setActionDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{actionType === 'reject' ? 'Reject Request' : 'Approve Request'}</DialogTitle>
+            <DialogTitle>
+              {actionType === 'forward' ? 'Forward Request' : actionType === 'reject' ? 'Reject Request' : 'Approve Request'}
+            </DialogTitle>
             <DialogDescription>
-              {actionType === 'reject'
+              {actionType === 'forward'
+                ? viewerRole === 'mechanical_request_handler'
+                  ? 'Add a handoff note for the Electrical & Mechanical Handler.'
+                  : 'Add a handoff note for Agency Admin.'
+                : actionType === 'reject'
                 ? 'Provide a reason so the organization knows why this request was rejected.'
                 : 'Add notes (optional) and approve this request.'}
             </DialogDescription>
@@ -383,11 +507,19 @@ export default function RequestDetailPage() {
           <div className="space-y-4">
             <div>
               <Label htmlFor="notes">
-                {actionType === 'reject' ? 'Rejection reason' : 'Notes (optional)'}
+                {actionType === 'forward'
+                  ? 'Handoff note'
+                  : actionType === 'reject'
+                    ? 'Rejection reason'
+                    : 'Notes (optional)'}
               </Label>
               <Textarea
                 id="notes"
-                placeholder={actionType === 'reject' ? 'Explain why this request cannot be approved...' : 'Add any notes for the requester...'}
+                placeholder={actionType === 'forward'
+                  ? 'Add context for the next reviewer...'
+                  : actionType === 'reject'
+                    ? 'Explain why this request cannot be approved...'
+                    : 'Add any notes for the requester...'}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 className="mt-2"
@@ -403,8 +535,8 @@ export default function RequestDetailPage() {
               </Button>
               <Button
                 onClick={handleAction}
-                disabled={isProcessing || (actionType === 'reject' && !notes.trim())}
-                className={actionType === 'reject' ? 'bg-red-600 hover:bg-red-700' : 'bg-emerald-600 hover:bg-emerald-700'}
+                disabled={isProcessing || ((actionType === 'reject' || actionType === 'forward') && !notes.trim())}
+                className={actionType === 'reject' ? 'bg-red-600 hover:bg-red-700' : actionType === 'forward' ? '' : 'bg-emerald-600 hover:bg-emerald-700'}
               >
                 {isProcessing ? (
                   <>
@@ -412,7 +544,7 @@ export default function RequestDetailPage() {
                     Processing...
                   </>
                 ) : (
-                  actionType === 'reject' ? 'Reject' : 'Approve'
+                  actionType === 'forward' ? 'Forward' : actionType === 'reject' ? 'Reject' : 'Approve'
                 )}
               </Button>
             </div>

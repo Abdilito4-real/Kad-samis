@@ -8,8 +8,9 @@ import { DashboardHeader } from "@/components/dashboard-header";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
 import { CommandPalette } from "@/components/command-palette";
 import { useAuth } from "@/components/auth-provider";
+import { useUnreadNotifications } from "@/hooks/useUnreadNotifications";
 import { cn } from "@/lib/utils";
-import { Bell, Home, Landmark, Package, Settings, Wrench, type LucideIcon } from "lucide-react";
+import { Bell, ClipboardCheck, ClipboardList, Home, Landmark, Package, Settings, Wrench, type LucideIcon } from "lucide-react";
 
 interface BottomNavItem {
   name: string;
@@ -39,7 +40,27 @@ const SUPER_ADMIN_BOTTOM_NAV: BottomNavItem[] = [
 // layout (operations/layout.tsx) that previously carried its own array.
 const OPERATIONAL_MANAGER_BOTTOM_NAV: BottomNavItem[] = [
   { name: "Operations", href: "/operations", icon: Wrench },
-  { name: "Home", href: "/dashboard", icon: Home },
+  { name: "Alerts", href: "/notifications", icon: Bell },
+  { name: "Assets", href: "/assets", icon: Package },
+  { name: "System", href: "/settings", icon: Settings },
+];
+
+const REQUEST_HANDLER_BOTTOM_NAV: BottomNavItem[] = [
+  { name: "Requests", href: "/requests", icon: ClipboardList },
+  { name: "Alerts", href: "/notifications", icon: Bell },
+  { name: "Assets", href: "/assets", icon: Package },
+  { name: "System", href: "/settings", icon: Settings },
+];
+
+const CUSTODIAN_BOTTOM_NAV: BottomNavItem[] = [
+  { name: "Assets", href: "/assets", icon: Package },
+  { name: "Alerts", href: "/notifications", icon: Bell },
+  { name: "System", href: "/settings", icon: Settings },
+];
+
+const INSPECTOR_BOTTOM_NAV: BottomNavItem[] = [
+  { name: "Inspections", href: "/inspections", icon: ClipboardCheck },
+  { name: "Assets", href: "/assets", icon: Package },
   { name: "Alerts", href: "/notifications", icon: Bell },
   { name: "System", href: "/settings", icon: Settings },
 ];
@@ -47,6 +68,21 @@ const OPERATIONAL_MANAGER_BOTTOM_NAV: BottomNavItem[] = [
 function getBottomNavForRole(roleId?: string | null): BottomNavItem[] {
   if (roleId === "operational_manager") return OPERATIONAL_MANAGER_BOTTOM_NAV;
   if (roleId === "super_admin") return SUPER_ADMIN_BOTTOM_NAV;
+  if (roleId === "mechanical_request_handler" || roleId === "electrical_mechanical_handler") {
+    return REQUEST_HANDLER_BOTTOM_NAV;
+  }
+  if (roleId === "custodian") return CUSTODIAN_BOTTOM_NAV;
+  if (roleId === "inspector") return INSPECTOR_BOTTOM_NAV;
+  if (roleId && !["agency_admin", "ministry_admin", "department_head"].includes(roleId)) {
+    return roleId === "maintenance_officer"
+      ? [
+          { name: "Requests", href: "/requests", icon: ClipboardList },
+          { name: "Assets", href: "/assets", icon: Package },
+          { name: "Alerts", href: "/notifications", icon: Bell },
+          { name: "System", href: "/settings", icon: Settings },
+        ]
+      : DEFAULT_BOTTOM_NAV.filter((item) => item.name !== "Home");
+  }
   return DEFAULT_BOTTOM_NAV;
 }
 
@@ -63,15 +99,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user } = useAuth();
   const bottomNav = getBottomNavForRole(user?.roleId);
+  const unreadNotificationCount = useUnreadNotifications();
 
   return (
     <ProtectedRoute>
       <div className="flex min-h-screen bg-slate-50/70 text-foreground transition-colors dark:bg-background dark:bg-none">
-        <DashboardSidebar mobileOpen={mobileMenuOpen} onMobileClose={() => setMobileMenuOpen(false)} />
+        <DashboardSidebar
+          mobileOpen={mobileMenuOpen}
+          onMobileClose={() => setMobileMenuOpen(false)}
+          unreadNotificationCount={unreadNotificationCount}
+        />
         <div className="flex min-w-0 flex-1 flex-col lg:ml-72">
           <DashboardHeader
             onOpenCommandPalette={() => setCommandPaletteOpen(true)}
             onOpenMobileMenu={() => setMobileMenuOpen(true)}
+            unreadNotificationCount={unreadNotificationCount}
           />
           <main className="flex-1 overflow-auto bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.12),_transparent_28%),linear-gradient(180deg,_rgba(248,250,252,0.96),_rgba(241,245,249,0.96))] p-4 sm:p-6 lg:p-8 dark:bg-background dark:bg-none">
             {children}

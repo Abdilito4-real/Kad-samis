@@ -30,7 +30,8 @@ interface AssetEditProps {
 export function AssetEdit({ asset }: AssetEditProps) {
   const router = useRouter();
   const { user } = useAuth();
-  const canRequest = Boolean(user?.organizationId);
+  const isCustodian = user?.roleId === "custodian";
+  const canRequest = Boolean(user?.organizationId) && !isCustodian;
   const [deleting, setDeleting] = useState(false);
   const initialValues: AssetFormValues = {
     assetNumber: asset.asset_number,
@@ -109,8 +110,10 @@ export function AssetEdit({ asset }: AssetEditProps) {
         <CardHeader>
           <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <CardTitle>Edit asset</CardTitle>
-              <p className="text-sm text-muted-foreground">Update asset details or remove it from the register.</p>
+              <CardTitle>{isCustodian ? "Asset details" : "Edit asset"}</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                {isCustodian ? "Custodian accounts can upload assets but cannot edit or delete records." : "Update asset details or remove it from the register."}
+              </p>
               <div className="mt-2">
                 <WarrantyIndicator purchaseYear={asset.purchase_year} warrantyYears={asset.warranty_years} />
                 {(!asset.purchase_year || asset.warranty_years == null) && (
@@ -122,7 +125,7 @@ export function AssetEdit({ asset }: AssetEditProps) {
               {canRequest && (
                 <RequestAssetDialog assetId={asset.id} assetName={asset.name} assetNumber={asset.asset_number} />
               )}
-              <Button
+              {!isCustodian && <Button
                 variant="destructive"
                 onClick={handleDelete}
                 isLoading={deleting}
@@ -130,12 +133,33 @@ export function AssetEdit({ asset }: AssetEditProps) {
                 className="rounded-3xl px-5 py-3"
               >
                 Delete asset
-              </Button>
+              </Button>}
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <AssetForm initialValues={initialValues} onSubmit={handleSubmit} submitLabel="Save changes" />
+          {isCustodian ? (
+            <dl className="grid gap-4 sm:grid-cols-2">
+              {Object.entries({
+                "Asset number": asset.asset_number,
+                Name: asset.name,
+                Condition: asset.condition,
+                Status: asset.status,
+                Make: asset.make,
+                "Purchase year": asset.purchase_year,
+                "Purchase value": asset.purchase_value,
+                "Warranty years": asset.warranty_years,
+                Location: asset.geolocation,
+              }).map(([label, value]) => (
+                <div key={label} className="rounded-lg border border-border p-3">
+                  <dt className="text-sm text-muted-foreground">{label}</dt>
+                  <dd className="mt-1 font-medium">{value ?? "—"}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : (
+            <AssetForm initialValues={initialValues} onSubmit={handleSubmit} submitLabel="Save changes" />
+          )}
         </CardContent>
       </Card>
     </div>

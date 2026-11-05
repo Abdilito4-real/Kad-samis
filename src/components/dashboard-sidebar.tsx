@@ -6,7 +6,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth-provider";
-import { useUnreadNotifications } from "@/hooks/useUnreadNotifications";
 import { displayIdentity } from "@/lib/displayIdentity";
 import { Avatar } from "@/components/ui/avatar";
 import type { LucideIcon } from "lucide-react";
@@ -56,6 +55,18 @@ const organizationAdminNavigationGroups: NavigationGroup[] = [
         description: "Registry and lifecycle",
       },
       {
+        name: "Users",
+        href: "/users",
+        icon: Users,
+        description: "Create and manage organization staff",
+      },
+      {
+        name: "Requests to Review",
+        href: "/requests/received",
+        icon: ClipboardList,
+        description: "Review requests forwarded by Electrical & Mechanical",
+      },
+      {
         name: "Backups",
         href: "/admin/backups",
         icon: Database,
@@ -66,12 +77,6 @@ const organizationAdminNavigationGroups: NavigationGroup[] = [
   {
     title: "Governance",
     items: [
-      {
-        name: "Requests",
-        href: "/requests",
-        icon: ClipboardList,
-        description: "Submit and track requests to General Admin",
-      },
       {
         name: "Notifications",
         href: "/notifications",
@@ -180,6 +185,41 @@ const operationalManagerNavigationGroups: NavigationGroup[] = [
   },
 ];
 
+const requestHandlerNavigationGroups: NavigationGroup[] = [
+  {
+    title: "Requests",
+    items: [
+      { name: "Requests", href: "/requests", icon: ClipboardList, description: "Review and forward organization requests" },
+      { name: "Notifications", href: "/notifications", icon: Bell, description: "Request updates and reminders" },
+      { name: "Settings", href: "/settings", icon: Settings, description: "Account preferences" },
+    ],
+  },
+];
+
+const custodianNavigationGroups: NavigationGroup[] = [
+  {
+    title: "Assets",
+    items: [
+      { name: "Assets", href: "/assets", icon: Package, description: "Upload and review organization assets" },
+      { name: "Notifications", href: "/notifications", icon: Bell, description: "Activity and alerts" },
+      { name: "Settings", href: "/settings", icon: Settings, description: "Account preferences" },
+    ],
+  },
+];
+
+const taskNavigationGroups: NavigationGroup[] = [
+  {
+    title: "Work",
+    items: [
+      { name: "Assets", href: "/assets", icon: Package, description: "Work with organization assets" },
+      { name: "Requests", href: "/requests", icon: ClipboardList, description: "Work with organization requests" },
+      { name: "Inspections", href: "/inspections", icon: ShieldCheck, description: "Review and record inspections" },
+      { name: "Notifications", href: "/notifications", icon: Bell, description: "Activity and alerts" },
+      { name: "Settings", href: "/settings", icon: Settings, description: "Account preferences" },
+    ],
+  },
+];
+
 /**
  * Role-aware nav groups — the single source of truth for "what modules can this
  * user see", shared by the sidebar itself and the command palette (Ctrl/Cmd+K).
@@ -188,14 +228,29 @@ const operationalManagerNavigationGroups: NavigationGroup[] = [
 export function getNavigationGroupsForRole(roleId?: string | null): NavigationGroup[] {
   if (roleId === "super_admin") return superAdminNavigationGroups;
   if (roleId === "operational_manager") return operationalManagerNavigationGroups;
-  return organizationAdminNavigationGroups;
+  if (roleId === "mechanical_request_handler" || roleId === "electrical_mechanical_handler") {
+    return requestHandlerNavigationGroups;
+  }
+  if (roleId === "custodian") return custodianNavigationGroups;
+  if (roleId && ["agency_admin", "ministry_admin", "department_head"].includes(roleId)) {
+    return roleId === "agency_admin"
+      ? organizationAdminNavigationGroups
+      : organizationAdminNavigationGroups.map((group) => ({
+          ...group,
+          items: group.items.filter((item) => item.name !== "Requests to Review"),
+        }));
+  }
+  const taskItems = taskNavigationGroups[0].items.filter((item) =>
+    roleId === "inspector" ? item.name !== "Requests" : item.name !== "Inspections"
+  );
+  return [{ ...taskNavigationGroups[0], items: taskItems }];
 }
 
 export const ROLE_LABELS: Record<string, string> = {
   super_admin: "General Admin",
-  agency_admin: "Agency Admin",
-  ministry_admin: "Ministry Admin",
-  department_head: "Department Head",
+  agency_admin: "Organization Admin",
+  ministry_admin: "Organization Admin",
+  department_head: "Organization Admin",
   asset_officer: "Asset Officer",
   maintenance_officer: "Maintenance Officer",
   inspector: "Inspector",
@@ -203,6 +258,9 @@ export const ROLE_LABELS: Record<string, string> = {
   procurement_officer: "Procurement Officer",
   finance_officer: "Finance Officer",
   operational_manager: "Operational Manager",
+  mechanical_request_handler: "Mechanical Request Handler",
+  electrical_mechanical_handler: "Electrical & Mechanical Request Handler",
+  custodian: "Custodian",
   read_only_user: "Read-Only User",
 };
 
@@ -211,16 +269,17 @@ export interface DashboardSidebarProps {
   mobileOpen?: boolean;
   /** Called when the drawer should close — backdrop tap, close button, or a nav link being followed. */
   onMobileClose?: () => void;
+  unreadNotificationCount: number;
 }
 
-export function DashboardSidebar({ mobileOpen = false, onMobileClose }: DashboardSidebarProps = {}) {
+export function DashboardSidebar({
+  mobileOpen = false,
+  onMobileClose,
+  unreadNotificationCount,
+}: DashboardSidebarProps) {
   const pathname = usePathname();
   const { user } = useAuth();
   const [query, setQuery] = useState("");
-  // Real-time unread count (and the toast that comes with new notifications)
-  // — see useUnreadNotifications for the realtime wiring. Applies to every
-  // role, not just super admin, so org admins see their own inbox state too.
-  const unreadNotificationCount = useUnreadNotifications();
   const isSuperAdmin = user?.roleId === "super_admin";
   const isOperationalManager = user?.roleId === "operational_manager";
   const activeNavigationGroups = getNavigationGroupsForRole(user?.roleId);

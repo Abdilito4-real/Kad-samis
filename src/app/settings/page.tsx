@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,13 +11,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ResponsiveGrid } from "@/components/layout/ResponsiveGrid";
 import { MetricCard } from "@/components/layout/MetricCard";
-import { Sun, Moon, User as UserIcon, KeyRound, LayoutDashboard, Save, ShieldCheck } from "lucide-react";
+import { Sun, Moon, User as UserIcon, KeyRound, LayoutDashboard, Save, ShieldCheck, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { createClient } from "@/lib/supabase/client";
 import { displayIdentity } from "@/lib/displayIdentity";
 import { PushNotificationsCard } from "@/components/notifications/PushNotificationsCard";
 import { PasskeysCard } from "@/components/settings/PasskeysCard";
 import { cn } from "@/lib/utils";
+import { canViewOverview } from "@/lib/roleLanding";
 
 const USERNAME_ROLES = new Set(["super_admin", "operational_manager"]);
 
@@ -26,11 +28,13 @@ const formatRole = (role: string | null | undefined) =>
 const DEFAULT_VIEW_KEY = "kadsamis-default-view";
 
 export default function SettingsPage() {
+  const router = useRouter();
   const { user, refreshProfile } = useAuth();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   const usesUsername = user?.roleId ? USERNAME_ROLES.has(user.roleId) : false;
+  const canChooseDashboard = canViewOverview(user?.roleId);
   const [username, setUsername] = useState("");
   const [savingUsername, setSavingUsername] = useState(false);
 
@@ -44,8 +48,9 @@ export default function SettingsPage() {
   useEffect(() => {
     setMounted(true);
     const stored = window.localStorage.getItem(DEFAULT_VIEW_KEY);
-    if (stored) setDefaultView(stored);
-  }, []);
+    if (canChooseDashboard && stored) setDefaultView(stored);
+    else if (!canChooseDashboard) setDefaultView("dashboard");
+  }, [canChooseDashboard]);
 
   useEffect(() => {
     setUsername(user?.username ?? "");
@@ -83,6 +88,10 @@ export default function SettingsPage() {
   };
 
   const handleDefaultViewChange = (value: string) => {
+    if (value === "dashboard" && !canChooseDashboard) {
+      toast.error("Only admins can use the dashboard overview");
+      return;
+    }
     setDefaultView(value);
     window.localStorage.setItem(DEFAULT_VIEW_KEY, value);
     toast.success("Landing page updated", { description: "Applies the next time you sign in." });
@@ -131,6 +140,10 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
+        <Button type="button" variant="outline" size="sm" onClick={() => router.back()} className="mb-4 gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Button>
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Settings</h1>
         <p className="text-muted-foreground">Manage your profile, appearance, and account security.</p>
       </div>
@@ -231,11 +244,12 @@ export default function SettingsPage() {
       {/* Notifications */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><LayoutDashboard className="h-4 w-4" /> Notifications & landing page</CardTitle>
+          <CardTitle className="flex items-center gap-2"><LayoutDashboard className="h-4 w-4" /> {canChooseDashboard ? "Notifications & landing page" : "Notifications"}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <PushNotificationsCard />
-          <div className="flex flex-col gap-3 rounded-2xl border border-border bg-background/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+          {canChooseDashboard && (
+            <div className="flex flex-col gap-3 rounded-2xl border border-border bg-background/70 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="font-medium">Landing page after sign-in</p>
               <p className="text-sm text-muted-foreground">Where Kadsamis takes you right after you log in.</p>
@@ -250,7 +264,8 @@ export default function SettingsPage() {
                 <SelectItem value="requests">Requests</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

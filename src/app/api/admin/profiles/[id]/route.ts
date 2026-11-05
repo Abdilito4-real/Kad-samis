@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { createServerSideClient } from '@/lib/supabase/server';
 import { getProfile, getSupabaseFromRequest, isValidUuid, writeAudit } from '@/lib/supabase/serverHelpers';
 
@@ -29,10 +30,71 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const ctx = await getProfile(supabase, req);
 
-    // Only super_admin, or the profile's own owner (e.g. setting their own
-    // username), may update a profile.
-    if (!ctx?.profile || (ctx.profile.role !== 'super_admin' && ctx.user?.id !== id)) {
+    const isOrganizationAdmin = ['agency_admin', 'ministry_admin', 'department_head'].includes(ctx?.profile?.role ?? '');
+    const isSelf = ctx?.user?.id === id;
+    if (!ctx?.profile || (ctx.profile.role !== 'super_admin' && !isSelf && !(isOrganizationAdmin && 'role' in body))) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    if (isOrganizationAdmin && 'role' in body) {
+      const organizationRoles = [
+        'agency_admin',
+        'mechanical_request_handler',
+        'electrical_mechanical_handler',
+        'custodian',
+      ];
+      if (!organizationRoles.includes(body.role)) {
+        return NextResponse.json({ error: 'Organization admins cannot assign this role' }, { status: 403 });
+      }
+      if (isSelf) {
+        return NextResponse.json({ error: 'You cannot change your own role' }, { status: 403 });
+      }
+      if (!ctx.profile.organization_id) {
+        return NextResponse.json({ error: 'Your profile is not assigned to an organization' }, { status: 403 });
+      }
+
+      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+      if (!serviceRoleKey) {
+        return NextResponse.json({ error: 'Changing organization user roles requires SUPABASE_SERVICE_ROLE_KEY' }, { status: 503 });
+      }
+
+      const writer = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const { data: existingProfile, error: existingError } = await writer
+        .from('profiles')
+        .select('id, email, username, role, organization_id')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (existingError) {
+        return NextResponse.json({ error: existingError.message }, { status: 500 });
+      }
+      if (!existingProfile || existingProfile.organization_id !== ctx.profile.organization_id) {
+        return NextResponse.json({ error: 'You can only change roles for users in your organization' }, { status: 403 });
+      }
+
+      const { data: profile, error } = await writer
+        .from('profiles')
+        .update({ role: body.role })
+        .eq('id', id)
+        .select('*')
+        .single();
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      await writeAudit(writer, req, {
+        action: 'role_changed',
+        table_name: 'profiles',
+        record_id: id,
+        old_values: existingProfile,
+        new_values: profile,
+        user_id: ctx.user.id,
+      });
+
+      return NextResponse.json({ profile });
     }
 
     // A non-super-admin editing their own profile can't touch role/org.

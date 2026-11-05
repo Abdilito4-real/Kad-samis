@@ -25,15 +25,15 @@ type Organization = {
 export default function OrganizationAdministrators({ org, onUpdate }: { org: Organization; onUpdate?: () => void }) {
   const [admins, setAdmins] = useState<Profile[]>(org.profiles || []);
   const [adding, setAdding] = useState(false);
-  const [newAdmin, setNewAdmin] = useState({ email: '', role: 'ministry_admin' });
+  const [newAdmin, setNewAdmin] = useState({ email: '', role: 'agency_admin', password: '' });
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
   const roleOptions = [
-    { value: 'super_admin', label: 'General Admin' },
-    { value: 'ministry_admin', label: 'Ministry Admin' },
-    { value: 'department_head', label: 'Department Head' },
-    { value: 'asset_officer', label: 'Asset Officer' },
+    { value: 'agency_admin', label: 'Organization Admin' },
+    { value: 'mechanical_request_handler', label: 'Mechanical Request Handler' },
+    { value: 'electrical_mechanical_handler', label: 'Electrical & Mechanical Request Handler' },
+    { value: 'custodian', label: 'Custodian' },
   ];
 
   const handleAddAdmin = async () => {
@@ -46,6 +46,10 @@ export default function OrganizationAdministrators({ org, onUpdate }: { org: Org
       toast.error('Please enter a valid email address');
       return;
     }
+    if (newAdmin.password.length < 8) {
+      toast.error('Set a temporary password of at least 8 characters');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -55,6 +59,7 @@ export default function OrganizationAdministrators({ org, onUpdate }: { org: Org
         body: JSON.stringify({
           email: newAdmin.email,
           role: newAdmin.role,
+          password: newAdmin.password,
           organization_id: org.id,
         }),
       });
@@ -66,7 +71,7 @@ export default function OrganizationAdministrators({ org, onUpdate }: { org: Org
 
       const data = await response.json();
       setAdmins([...admins, data.profile]);
-      setNewAdmin({ email: '', role: 'ministry_admin' });
+      setNewAdmin({ email: '', role: 'agency_admin', password: '' });
       setAdding(false);
       toast.success('Administrator added successfully');
       onUpdate?.();
@@ -107,7 +112,6 @@ export default function OrganizationAdministrators({ org, onUpdate }: { org: Org
 
   const getRoleColor = (role?: string) => {
     const colors: Record<string, string> = {
-      super_admin: 'bg-rose-500/10 text-rose-500',
       ministry_admin: 'bg-sky-500/10 text-sky-500',
       department_head: 'bg-violet-500/10 text-violet-400',
       asset_officer: 'bg-amber-500/10 text-amber-600',
@@ -201,6 +205,18 @@ export default function OrganizationAdministrators({ org, onUpdate }: { org: Org
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="admin-password">Temporary password</Label>
+              <Input
+                id="admin-password"
+                type="password"
+                autoComplete="new-password"
+                placeholder="At least 8 characters"
+                value={newAdmin.password}
+                onChange={e => setNewAdmin(prev => ({ ...prev, password: e.target.value }))}
+              />
             </div>
 
             <div className="flex justify-end gap-2 pt-4">

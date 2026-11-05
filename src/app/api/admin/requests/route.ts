@@ -23,6 +23,9 @@ export async function POST(req: Request) {
       console.warn('POST /api/admin/requests - Profile not found or missing organization_id');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
+    if (ctx.profile.role === 'custodian') {
+      return NextResponse.json({ error: 'Custodians can upload assets but cannot submit requests' }, { status: 403 });
+    }
 
     // Validate inputs
     if (!title?.trim() || !description?.trim() || !requestType) {
@@ -39,6 +42,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid priority' }, { status: 400 });
     }
 
+    if (!(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY)) {
+      return NextResponse.json({ error: 'Request routing requires SUPABASE_SERVICE_ROLE_KEY' }, { status: 503 });
+    }
+
+    const serviceClient = getServiceRoleClient(supabase);
+    const { data: mechanicalHandlers, error: handlersError } = await serviceClient
+      .from('profiles')
+      .select('id')
+      .eq('organization_id', ctx.profile.organization_id)
+      .eq('role', 'mechanical_request_handler');
+    if (handlersError) {
+      console.error('Mechanical request handler lookup failed', handlersError);
+      return NextResponse.json({ error: 'Unable to find the Mechanical Request Handler' }, { status: 500 });
+    }
+    if (!mechanicalHandlers?.length) {
+      return NextResponse.json({
+        error: 'Ask your Organization Admin to assign a Mechanical Request Handler before submitting requests',
+      }, { status: 409 });
+    }
+
     // Create request using 'type' column name
     const { data, error } = await supabase
       .from('requests')
@@ -51,6 +74,7 @@ export async function POST(req: Request) {
         organization_id: ctx.profile.organization_id,
         created_by: ctx.user?.id,
         status: 'pending',
+        workflow_stage: 'mechanical',
       })
       .select()
       .single();
@@ -60,31 +84,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: (error as any)?.message || 'Failed to create request' }, { status: 500 });
     }
 
-    // Notify every super admin so new requests appear in the review workflow.
-    // Both the lookup and the insert are routed through the service role:
-    // the caller here is the submitting org admin, who can't see other
-    // users' profiles (RLS) to find the super admins in the first place,
-    // and couldn't insert notifications for them even if they could.
+    let notificationsSent = true;
     try {
-      const serviceClient = getServiceRoleClient(supabase);
-      const { data: superAdmins } = await serviceClient
-        .from('profiles')
-        .select('id')
-        .eq('role', 'super_admin');
-
-      if (superAdmins?.length) {
-        await writeNotifications(
-          supabase,
-          superAdmins.map((admin: { id: string }) => ({
-            user_id: admin.id,
-            type: 'request',
-            title: 'New request received',
-            message: `A new request, "${data.title}", is ready for approval.`,
-            related_request_id: data.id,
-          }))
-        );
-      }
+      notificationsSent = await writeNotifications(
+        supabase,
+        mechanicalHandlers.map((handler: { id: string }) => ({
+          user_id: handler.id,
+          type: 'request',
+          title: 'New request received',
+          message: `A new request, "${data.title}", is ready for Mechanical Request Handler review.`,
+          related_request_id: data.id,
+        }))
+      );
     } catch (notificationError) {
+      notificationsSent = false;
       console.warn('Request notification creation failed', notificationError);
     }
 
@@ -102,7 +115,7 @@ export async function POST(req: Request) {
       console.warn('Failed to write audit for request creation:', err);
     }
 
-    return NextResponse.json({ request: data }, { status: 201 });
+    return NextResponse.json({ request: data, notificationsSent }, { status: 201 });
   } catch (err) {
     console.error('Request creation error', err);
     return NextResponse.json({ error: 'Unable to create request' }, { status: 500 });
@@ -115,6 +128,7 @@ export async function GET(req: Request) {
     const orgId = url.searchParams.get('orgId');
     const status = url.searchParams.get('status');
     const type = url.searchParams.get('type');
+    const queue = url.searchParams.get('queue');
 
     // Try to get authenticated client from bearer token first, then fall back to cookies
     let supabase = getSupabaseFromRequest(req);
@@ -131,6 +145,12 @@ export async function GET(req: Request) {
     if (!ctx?.profile) {
       console.warn('GET /api/admin/requests - No profile found');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+    if (ctx.profile.role === 'custodian') {
+      return NextResponse.json({ error: 'Custodians do not have access to requests' }, { status: 403 });
+    }
+    if (queue && (queue !== 'agency_admin' || ctx.profile.role !== 'agency_admin')) {
+      return NextResponse.json({ error: 'Only Agency Admins can access the receiving queue' }, { status: 403 });
     }
 
     let query = supabase
@@ -150,6 +170,14 @@ export async function GET(req: Request) {
         return NextResponse.json({ requests: [] });
       }
       query = query.eq('organization_id', ctx.profile.organization_id);
+    }
+
+    if (ctx.profile.role === 'mechanical_request_handler') {
+      query = query.or('workflow_stage.eq.mechanical,workflow_stage.eq.electrical_mechanical,workflow_stage.eq.agency_admin,workflow_stage.is.null');
+    } else if (ctx.profile.role === 'electrical_mechanical_handler') {
+      query = query.in('workflow_stage', ['electrical_mechanical', 'agency_admin']);
+    } else if (queue === 'agency_admin') {
+      query = query.eq('workflow_stage', 'agency_admin');
     }
 
     // Apply filters

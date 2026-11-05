@@ -95,9 +95,14 @@ export function RequestSubmissionForm({ onSuccess, presetAsset }: RequestSubmiss
         throw new Error(error.error || "Failed to submit request");
       }
 
-      toast.success("Request submitted", {
-        description: "Sent to General Admin for approval. It will be routed to operations once approved.",
-      });
+      const result = await response.json();
+      if (result.notificationsSent === false) {
+        toast.warning("Request submitted, but the Mechanical Request Handler could not be notified.");
+      } else {
+        toast.success("Request submitted", {
+          description: "Sent to the Mechanical Request Handler. It will move through Electrical & Mechanical review to the Agency Admin.",
+        });
+      }
 
       setWorkType("repair");
       setTitle(titleFor("repair", presetAsset));
@@ -119,7 +124,7 @@ export function RequestSubmissionForm({ onSuccess, presetAsset }: RequestSubmiss
       <div>
         <h3 className="text-lg font-semibold text-foreground">Request Maintenance / Repair</h3>
         <p className="text-sm text-muted-foreground">
-          Sent to General Admin for approval, then routed to an Operational Manager to monitor through completion.
+          Starts with the Mechanical Request Handler, then moves to Electrical & Mechanical review and Agency Admin approval. Approved maintenance requests can then be assigned to an Operational Manager.
         </p>
       </div>
 

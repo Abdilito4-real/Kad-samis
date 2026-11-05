@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { displayIdentity } from "@/lib/displayIdentity";
 import { ROLE_LABELS } from "@/components/dashboard-sidebar";
-import { useUnreadNotifications } from "@/hooks/useUnreadNotifications";
 import {
   Bell,
   CalendarDays,
@@ -38,9 +37,14 @@ interface DashboardHeaderProps {
   onOpenCommandPalette: () => void;
   /** Opens the mobile navigation drawer. Omit to hide the hamburger trigger (e.g. on pages that render their own). */
   onOpenMobileMenu?: () => void;
+  unreadNotificationCount: number;
 }
 
-export function DashboardHeader({ onOpenCommandPalette, onOpenMobileMenu }: DashboardHeaderProps) {
+export function DashboardHeader({
+  onOpenCommandPalette,
+  onOpenMobileMenu,
+  unreadNotificationCount,
+}: DashboardHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -49,10 +53,6 @@ export function DashboardHeader({ onOpenCommandPalette, onOpenMobileMenu }: Dash
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-  // Real-time unread count (and the "new request"/"new assignment" etc. toast
-  // that goes with it) — see useUnreadNotifications for the realtime wiring.
-  const unreadNotificationCount = useUnreadNotifications();
-
   const identity = user
     ? displayIdentity({ email: user.email, username: user.username, role: user.roleId })
     : "Account";

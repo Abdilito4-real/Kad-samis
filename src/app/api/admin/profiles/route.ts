@@ -17,21 +17,33 @@ export async function GET(req: Request) {
 
     const ctx = await getProfile(supabase, req);
 
-    if (!ctx?.profile || ctx.profile.role !== 'super_admin') {
+    const isOrganizationAdmin = ['agency_admin', 'ministry_admin', 'department_head'].includes(ctx?.profile?.role ?? '');
+    if (!ctx?.profile || (ctx.profile.role !== 'super_admin' && !isOrganizationAdmin)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    // Reads as the service role once we've confirmed the caller is super_admin,
-    // so the listing isn't at the mercy of cookie/RLS propagation for this request.
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+    if (isOrganizationAdmin && !serviceRoleKey) {
+      return NextResponse.json({ error: 'Organization user listing requires SUPABASE_SERVICE_ROLE_KEY' }, { status: 503 });
+    }
+
     const reader = serviceRoleKey
       ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } })
       : supabase;
 
-    const { data: profiles, error } = await reader
+    let query = reader
       .from('profiles')
       .select('id, email, username, role, organization_id, created_at')
       .order('created_at', { ascending: false });
+
+    if (isOrganizationAdmin) {
+      if (!ctx.profile.organization_id) {
+        return NextResponse.json({ error: 'Your profile is not assigned to an organization' }, { status: 403 });
+      }
+      query = query.eq('organization_id', ctx.profile.organization_id);
+    }
+
+    const { data: profiles, error } = await query;
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -59,7 +71,9 @@ export async function POST(req: Request) {
 
     const ctx = await getProfile(supabase, req);
 
-    if (!ctx?.profile || ctx.profile.role !== 'super_admin') {
+    const isSystemAdmin = ctx?.profile?.role === 'super_admin';
+    const isOrganizationAdmin = ['agency_admin', 'ministry_admin', 'department_head'].includes(ctx?.profile?.role ?? '');
+    if (!ctx?.profile || (!isSystemAdmin && !isOrganizationAdmin)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -76,18 +90,42 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Creating users requires SUPABASE_SERVICE_ROLE_KEY' }, { status: 500 });
     }
 
-    const email = body.email?.toString().trim();
+    const email = body.email?.toString().trim().toLowerCase();
     const password = body.password?.toString();
-    const requestedRole = body.role || 'ministry_admin';
+    const requestedRole = body.role || 'read_only_user';
     const dbRole = requestedRole === 'department_admin' ? 'department_head' : requestedRole;
-    const organizationId = body.organization_id || null;
+    const organizationId = isOrganizationAdmin
+      ? ctx.profile.organization_id
+      : body.organization_id || null;
     const username = body.username?.toString().trim() || null;
+    const organizationRoles = [
+      'agency_admin',
+      'mechanical_request_handler',
+      'electrical_mechanical_handler',
+      'custodian',
+    ];
 
     if (!email) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      return NextResponse.json({ error: 'A valid email address is required' }, { status: 400 });
+    }
     if (!password || password.length < 8) {
       return NextResponse.json({ error: 'A password of at least 8 characters is required' }, { status: 400 });
+    }
+    if (isOrganizationAdmin && !organizationRoles.includes(dbRole)) {
+      return NextResponse.json({ error: 'Organization admins cannot assign this role' }, { status: 403 });
+    }
+    if (isOrganizationAdmin && !organizationId) {
+      return NextResponse.json({ error: 'Your profile is not assigned to an organization' }, { status: 403 });
+    }
+    if (isSystemAdmin && ![
+      ...organizationRoles,
+      'super_admin',
+      'operational_manager',
+    ].includes(dbRole)) {
+      return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
     }
     // super_admin and operational_manager are identified by username
     // throughout the UI instead of email — enforced here, not just in the
