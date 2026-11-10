@@ -64,7 +64,7 @@ const organizationAdminNavigationGroups: NavigationGroup[] = [
         name: "Requests to Review",
         href: "/requests/received",
         icon: ClipboardList,
-        description: "Review requests forwarded by Electrical & Mechanical",
+        description: "Review requests forwarded by Director Operations",
       },
       {
         name: "Backups",
@@ -228,7 +228,12 @@ const taskNavigationGroups: NavigationGroup[] = [
 export function getNavigationGroupsForRole(roleId?: string | null): NavigationGroup[] {
   if (roleId === "super_admin") return superAdminNavigationGroups;
   if (roleId === "operational_manager") return operationalManagerNavigationGroups;
-  if (roleId === "mechanical_request_handler" || roleId === "electrical_mechanical_handler") {
+  if (
+    roleId === "mechanical_request_handler" ||
+    roleId === "electrical_mechanical_handler" ||
+    roleId === "assistant_director_operations" ||
+    roleId === "director_operations"
+  ) {
     return requestHandlerNavigationGroups;
   }
   if (roleId === "custodian") return custodianNavigationGroups;
@@ -258,8 +263,10 @@ export const ROLE_LABELS: Record<string, string> = {
   procurement_officer: "Procurement Officer",
   finance_officer: "Finance Officer",
   operational_manager: "Operational Manager",
-  mechanical_request_handler: "Mechanical Request Handler",
-  electrical_mechanical_handler: "Electrical & Mechanical Request Handler",
+  mechanical_request_handler: "Mechanical Requests Operator",
+  electrical_mechanical_handler: "Electrical & Mechanical Requests Operator",
+  assistant_director_operations: "Assistant Director Operations",
+  director_operations: "Director Operations",
   custodian: "Custodian",
   read_only_user: "Read-Only User",
 };

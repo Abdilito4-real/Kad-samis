@@ -27,8 +27,11 @@ export async function POST(req: Request) {
 
     const supabase = getSupabaseFromRequest(req) ?? await createServerSideClient();
     const ctx = await getProfile(supabase, req);
-    if (ctx?.profile?.role !== 'mechanical_request_handler' || !ctx.profile.organization_id) {
-      return NextResponse.json({ error: 'Only Mechanical Request Handlers can enter manually received MDA requests' }, { status: 403 });
+    if (
+      !['mechanical_request_handler', 'electrical_mechanical_handler'].includes(ctx?.profile?.role ?? '') ||
+      !ctx?.profile?.organization_id
+    ) {
+      return NextResponse.json({ error: 'Only Requests Operators can enter manually received MDA requests' }, { status: 403 });
     }
 
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
@@ -37,18 +40,18 @@ export async function POST(req: Request) {
     }
 
     const serviceClient = getServiceRoleClient(supabase);
-    const { data: nextHandlers, error: handlerError } = await serviceClient
+    const { data: assistantDirectors, error: assistantDirectorError } = await serviceClient
       .from('profiles')
       .select('id')
       .eq('organization_id', ctx.profile.organization_id)
-      .eq('role', 'electrical_mechanical_handler');
-    if (handlerError) {
-      console.error('Electrical & Mechanical Handler lookup failed', handlerError);
-      return NextResponse.json({ error: 'Unable to find the Electrical & Mechanical Handler' }, { status: 500 });
+      .eq('role', 'assistant_director_operations');
+    if (assistantDirectorError) {
+      console.error('Assistant Director Operations lookup failed', assistantDirectorError);
+      return NextResponse.json({ error: 'Unable to find Assistant Director Operations' }, { status: 500 });
     }
-    if (!nextHandlers?.length) {
+    if (!assistantDirectors?.length) {
       return NextResponse.json({
-        error: 'No Electrical & Mechanical Request Handler is assigned to this organization',
+        error: 'No Assistant Director Operations user is assigned to this organization',
       }, { status: 409 });
     }
 
@@ -62,11 +65,10 @@ export async function POST(req: Request) {
         source_mda: sourceMda,
         organization_id: ctx.profile.organization_id,
         created_by: ctx.user.id,
+        workflow_owner_id: ctx.user.id,
         status: 'escalated',
-        workflow_stage: 'electrical_mechanical',
+        workflow_stage: 'assistant_director_operations',
         escalation_reason: `Manually received from ${sourceMda}`,
-        escalated_at: new Date().toISOString(),
-        escalated_by: ctx.user.id,
       })
       .select('*, organizations(name)')
       .single();
@@ -86,15 +88,15 @@ export async function POST(req: Request) {
     }
 
     const recipientIds = new Set<string>([
-      ...nextHandlers.map((handler: { id: string }) => handler.id),
+      ...assistantDirectors.map((reviewer: { id: string }) => reviewer.id),
       ...(organizationAdmins ?? []).map((admin: { id: string }) => admin.id),
       ctx.user.id,
     ]);
     const notificationsSent = await writeNotifications(supabase, Array.from(recipientIds).map((userId) => ({
       user_id: userId,
-      type: 'manual_mda_request',
-      title: 'Manually received MDA request',
-      message: `"${title}" from ${sourceMda} was entered and sent to the Electrical & Mechanical Handler.`,
+      type: 'request_handoff',
+      title: 'New request from Requests Operator',
+      message: `"${title}" from ${sourceMda} was sent to you for Assistant Director Operations review.`,
       related_request_id: request.id,
     })));
 

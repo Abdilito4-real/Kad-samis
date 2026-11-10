@@ -22,10 +22,26 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const isMechanicalHandler = ctx.profile.role === 'mechanical_request_handler';
-    const isElectricalHandler = ctx.profile.role === 'electrical_mechanical_handler';
-    if (!isMechanicalHandler && !isElectricalHandler) {
-      return NextResponse.json({ error: 'Only request handlers can send workflow reminders' }, { status: 403 });
+    const isRequestHandler = ['mechanical_request_handler', 'electrical_mechanical_handler'].includes(ctx.profile.role);
+    const reviewerTargets: Record<string, { stage: string; nextRole: string }> = {
+      assistant_director_operations: {
+        stage: 'assistant_director_operations',
+        nextRole: 'director_operations',
+      },
+      director_operations: {
+        stage: 'director_operations',
+        nextRole: 'agency_admin',
+      },
+    };
+    const reviewerTarget = reviewerTargets[ctx.profile.role];
+    if (!isRequestHandler && !reviewerTarget) {
+      return NextResponse.json({ error: 'Only assigned workflow reviewers can send reminders' }, { status: 403 });
+    }
+    const target = isRequestHandler
+      ? { stage: 'assistant_director_operations', nextRole: 'assistant_director_operations' }
+      : reviewerTarget;
+    if (!target) {
+      return NextResponse.json({ error: 'No next workflow reviewer is assigned to this role' }, { status: 403 });
     }
     if (!(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY)) {
       return NextResponse.json({ error: 'Request reminders require SUPABASE_SERVICE_ROLE_KEY' }, { status: 503 });
@@ -33,7 +49,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     const { data: request, error: requestError } = await supabase
       .from('requests')
-      .select('id, title, organization_id, created_by, status, workflow_stage')
+      .select('id, title, organization_id, created_by, workflow_owner_id, status, workflow_stage')
       .eq('id', id)
       .maybeSingle();
     if (requestError) {
@@ -45,21 +61,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (request.organization_id !== ctx.profile.organization_id) {
       return NextResponse.json({ error: 'You can only remind handlers about your organization’s requests' }, { status: 403 });
     }
+    if (isRequestHandler && request.workflow_owner_id !== ctx.user.id) {
+      return NextResponse.json({ error: 'You can only remind reviewers about requests assigned to you' }, { status: 403 });
+    }
 
-    const expectedStage = isMechanicalHandler ? 'electrical_mechanical' : 'agency_admin';
-    if (request.workflow_stage !== expectedStage || request.status !== 'escalated') {
+    if (request.workflow_stage !== target.stage || request.status !== 'escalated') {
       return NextResponse.json({ error: 'This request is not waiting at the next workflow stage' }, { status: 409 });
     }
 
     const reader = getServiceRoleClient(supabase);
     let recipientsQuery = reader.from('profiles').select('id').eq('organization_id', request.organization_id);
-    recipientsQuery = recipientsQuery.eq(
-      'role',
-      isMechanicalHandler ? 'electrical_mechanical_handler' : 'agency_admin'
-    );
+    recipientsQuery = recipientsQuery.eq('role', target.nextRole);
     const { data: recipients, error: recipientError } = await recipientsQuery;
     if (recipientError) {
-      return NextResponse.json({ error: 'Unable to find the next request handlers' }, { status: 500 });
+      return NextResponse.json({ error: 'Unable to find the next reviewers' }, { status: 500 });
     }
     if (!recipients?.length) {
       return NextResponse.json({ error: 'No handler is available to receive this reminder' }, { status: 409 });
@@ -82,7 +97,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       table_name: 'requests',
       record_id: id,
       old_values: null,
-      new_values: { workflow_stage: expectedStage },
+      new_values: { workflow_stage: target.stage },
       user_id: ctx.user.id,
     });
 

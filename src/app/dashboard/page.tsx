@@ -547,7 +547,7 @@ export default function DashboardPage() {
             <div>
               <p className="font-semibold text-foreground">Requests awaiting your review</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Review requests forwarded by the Electrical & Mechanical Request Handler.
+                Review requests forwarded by the Electrical & Mechanical Requests Operator.
               </p>
             </div>
           </div>

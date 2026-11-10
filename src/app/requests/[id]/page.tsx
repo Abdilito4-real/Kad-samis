@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ArrowLeft, CheckCircle, XCircle, AlertCircle, ChevronDown, UserCog, Send } from 'lucide-react';
+import { Loader2, ArrowLeft, CheckCircle, XCircle, AlertCircle, ChevronDown, UserCog, Send, ArrowDownLeft } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -30,7 +30,8 @@ interface Request {
   type: string;
   priority: string;
   status: 'pending' | 'approved' | 'rejected' | 'escalated' | 'in_operation' | 'completed';
-  workflow_stage?: 'mechanical' | 'electrical_mechanical' | 'agency_admin' | 'general_admin' | null;
+  workflow_stage?: 'mechanical' | 'electrical_mechanical' | 'assistant_director_operations' | 'director_operations' | 'agency_admin' | 'general_admin' | null;
+  workflow_owner_id?: string | null;
   notes?: string;
   created_at: string;
   updated_at: string;
@@ -90,7 +91,7 @@ export default function RequestDetailPage() {
   const [viewerRole, setViewerRole] = useState<string | null>(null);
   const [viewerId, setViewerId] = useState<string | null>(null);
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
-  const [actionType, setActionType] = useState<'approve' | 'reject' | 'forward'>('approve');
+  const [actionType, setActionType] = useState<'approve' | 'reject' | 'forward' | 'return'>('approve');
   const [notes, setNotes] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   // Collapsed by default once a request is past pending — the stage is the
@@ -154,14 +155,14 @@ export default function RequestDetailPage() {
   const handleAction = async () => {
     if (!request) return;
     const canReviewRequest =
-      (viewerRole === 'agency_admin' &&
+      ((viewerRole === 'agency_admin' || viewerRole === 'ministry_admin' || viewerRole === 'department_head') &&
         request.workflow_stage === 'agency_admin' &&
         request.status === 'escalated') ||
       (isSuperAdmin &&
         ((request.workflow_stage === 'general_admin' && request.status === 'escalated') ||
           (!request.workflow_stage && ['pending', 'escalated'].includes(request.status))));
-    if (actionType !== 'forward' && !canReviewRequest) return;
-    if (actionType === 'forward' && !notes.trim()) {
+    if (actionType !== 'forward' && actionType !== 'return' && !canReviewRequest) return;
+    if ((actionType === 'forward' || actionType === 'return') && !notes.trim()) {
       toast.error('A handoff note is required');
       return;
     }
@@ -174,7 +175,8 @@ export default function RequestDetailPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('No authenticated session');
 
-      const response = await fetch(actionType === 'forward'
+      const isHandoff = actionType === 'forward' || actionType === 'return';
+      const response = await fetch(isHandoff
         ? `/api/admin/requests/${request.id}/escalate`
         : `/api/admin/requests/${request.id}/${actionType}`, {
         method: 'PATCH',
@@ -183,8 +185,12 @@ export default function RequestDetailPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify(actionType === 'forward'
-          ? { escalationReason: notes.trim(), priority: request.priority }
+        body: JSON.stringify(isHandoff
+          ? {
+              escalationReason: notes.trim(),
+              priority: request.priority,
+              ...(actionType === 'return' ? { direction: 'return' } : {}),
+            }
           : { notes: notes.trim() || null }),
       });
 
@@ -207,11 +213,17 @@ export default function RequestDetailPage() {
       if (data.notificationsSent === false) {
         toast.warning('Action completed, but a notification could not be delivered.');
       } else {
-        toast.success(actionType === 'forward' ? 'Request forwarded successfully' : `Request ${actionType}d successfully`);
+        toast.success(
+          actionType === 'forward'
+            ? 'Request forwarded successfully'
+            : actionType === 'return'
+              ? 'Request returned successfully'
+              : `Request ${actionType}d successfully`
+        );
       }
     } catch (err: any) {
       console.error(`Request ${actionType} error:`, err);
-      toast.error(`Failed to ${actionType} request`, { description: err.message });
+      toast.error(`Failed to ${actionType === 'return' ? 'return' : actionType} request`, { description: err.message });
     } finally {
       setIsProcessing(false);
     }
@@ -269,17 +281,30 @@ export default function RequestDetailPage() {
   }
 
   const canForward =
-    (viewerRole === 'mechanical_request_handler' &&
+    (['mechanical_request_handler', 'electrical_mechanical_handler'].includes(viewerRole ?? '') &&
       request.status === 'pending' &&
-      (!request.workflow_stage || request.workflow_stage === 'mechanical')) ||
-    (viewerRole === 'electrical_mechanical_handler' &&
+      (!request.workflow_stage || request.workflow_stage === 'mechanical' || request.workflow_stage === 'electrical_mechanical')) ||
+    (viewerRole === 'assistant_director_operations' &&
       request.status === 'escalated' &&
-      request.workflow_stage === 'electrical_mechanical');
+      request.workflow_stage === 'assistant_director_operations') ||
+    (viewerRole === 'director_operations' &&
+      request.status === 'escalated' &&
+      request.workflow_stage === 'director_operations');
+  const canReturn =
+    (viewerRole === 'assistant_director_operations' &&
+      request.status === 'escalated' &&
+      request.workflow_stage === 'assistant_director_operations') ||
+    (viewerRole === 'director_operations' &&
+      request.status === 'escalated' &&
+      request.workflow_stage === 'director_operations');
   const canRemind =
-    (viewerRole === 'mechanical_request_handler' &&
+    (['mechanical_request_handler', 'electrical_mechanical_handler'].includes(viewerRole ?? '') &&
       request.status === 'escalated' &&
-      request.workflow_stage === 'electrical_mechanical') ||
-    (viewerRole === 'electrical_mechanical_handler' &&
+      request.workflow_stage === 'assistant_director_operations') ||
+    (viewerRole === 'assistant_director_operations' &&
+      request.status === 'escalated' &&
+      request.workflow_stage === 'director_operations') ||
+    (viewerRole === 'director_operations' &&
       request.status === 'escalated' &&
       request.workflow_stage === 'agency_admin');
   const canAdminAct =
@@ -316,15 +341,19 @@ export default function RequestDetailPage() {
             <div className="flex flex-wrap gap-2 sm:justify-end">
               <Badge className={statusColors[request.status]}>
                 {request.workflow_stage === 'agency_admin' && request.status === 'approved'
-                  ? 'Approved by Agency Admin'
+                  ? 'Approved by Director General'
                   : request.workflow_stage === 'agency_admin' && request.status === 'rejected'
-                    ? 'Rejected by Agency Admin'
+                    ? 'Rejected by Director General'
                     : request.workflow_stage === 'mechanical'
-                  ? 'Mechanical Review'
+                  ? 'Requests Operator Review'
                   : request.workflow_stage === 'electrical_mechanical'
-                    ? 'Electrical & Mechanical Review'
+                    ? 'Requests Operator Review'
+                    : request.workflow_stage === 'assistant_director_operations'
+                      ? 'Assistant Director Operations Review'
+                      : request.workflow_stage === 'director_operations'
+                        ? 'Director Operations Review'
                     : request.workflow_stage === 'agency_admin'
-                      ? 'Awaiting Agency Admin'
+                      ? 'Awaiting Director General'
                     : request.workflow_stage === 'general_admin'
                       ? 'Awaiting General Admin'
                       : statusLabels[request.status] ?? request.status.charAt(0).toUpperCase() + request.status.slice(1)}
@@ -423,7 +452,7 @@ export default function RequestDetailPage() {
               </div>
             )}
 
-            {(canForward || canRemind) && (
+            {(canForward || canRemind || canReturn) && (
               <div className="flex flex-wrap gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
                 {canForward && (
                   <Button
@@ -435,9 +464,25 @@ export default function RequestDetailPage() {
                     className="gap-2"
                   >
                     <Send className="h-4 w-4" />
-                    {viewerRole === 'mechanical_request_handler'
-                      ? 'Forward to Electrical & Mechanical'
-                      : 'Send to Agency Admin'}
+                    {viewerRole === 'mechanical_request_handler' || viewerRole === 'electrical_mechanical_handler'
+                      ? 'Forward to Assistant Director Operations'
+                      : viewerRole === 'assistant_director_operations'
+                        ? 'Forward to Director Operations'
+                        : 'Send to Director General'}
+                  </Button>
+                )}
+                {canReturn && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setActionType('return');
+                      setNotes('');
+                      setActionDialogOpen(true);
+                    }}
+                    className="gap-2"
+                  >
+                    <ArrowDownLeft className="h-4 w-4" />
+                    Return to {viewerRole === 'assistant_director_operations' ? 'Requests Operators' : 'Assistant Director Operations'}
                   </Button>
                 )}
                 {canRemind && (
@@ -449,7 +494,7 @@ export default function RequestDetailPage() {
               </div>
             )}
 
-            {/* Agency Admin actions */}
+            {/* Director General approval actions */}
             {canAdminAct && (
               <div className="flex gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
                 <Button
@@ -492,13 +537,23 @@ export default function RequestDetailPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {actionType === 'forward' ? 'Forward Request' : actionType === 'reject' ? 'Reject Request' : 'Approve Request'}
+              {actionType === 'forward'
+                ? 'Forward Request'
+                : actionType === 'return'
+                  ? 'Return Request'
+                  : actionType === 'reject' ? 'Reject Request' : 'Approve Request'}
             </DialogTitle>
             <DialogDescription>
-              {actionType === 'forward'
-                ? viewerRole === 'mechanical_request_handler'
-                  ? 'Add a handoff note for the Electrical & Mechanical Handler.'
-                  : 'Add a handoff note for Agency Admin.'
+              {actionType === 'return'
+                ? viewerRole === 'assistant_director_operations'
+                  ? 'Add a handoff note for the Requests Operators.'
+                  : 'Add a handoff note for Assistant Director Operations.'
+                : actionType === 'forward'
+                ? viewerRole === 'mechanical_request_handler' || viewerRole === 'electrical_mechanical_handler'
+                  ? 'Add a handoff note for Assistant Director Operations.'
+                  : viewerRole === 'assistant_director_operations'
+                    ? 'Add a handoff note for Director Operations.'
+                    : 'Add a handoff note for the Director General.'
                 : actionType === 'reject'
                 ? 'Provide a reason so the organization knows why this request was rejected.'
                 : 'Add notes (optional) and approve this request.'}
@@ -507,7 +562,7 @@ export default function RequestDetailPage() {
           <div className="space-y-4">
             <div>
               <Label htmlFor="notes">
-                {actionType === 'forward'
+                {actionType === 'forward' || actionType === 'return'
                   ? 'Handoff note'
                   : actionType === 'reject'
                     ? 'Rejection reason'
@@ -515,7 +570,7 @@ export default function RequestDetailPage() {
               </Label>
               <Textarea
                 id="notes"
-                placeholder={actionType === 'forward'
+                placeholder={actionType === 'forward' || actionType === 'return'
                   ? 'Add context for the next reviewer...'
                   : actionType === 'reject'
                     ? 'Explain why this request cannot be approved...'
@@ -535,8 +590,8 @@ export default function RequestDetailPage() {
               </Button>
               <Button
                 onClick={handleAction}
-                disabled={isProcessing || ((actionType === 'reject' || actionType === 'forward') && !notes.trim())}
-                className={actionType === 'reject' ? 'bg-red-600 hover:bg-red-700' : actionType === 'forward' ? '' : 'bg-emerald-600 hover:bg-emerald-700'}
+                disabled={isProcessing || ((actionType === 'reject' || actionType === 'forward' || actionType === 'return') && !notes.trim())}
+                className={actionType === 'reject' ? 'bg-red-600 hover:bg-red-700' : actionType === 'forward' ? '' : actionType === 'return' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'}
               >
                 {isProcessing ? (
                   <>
@@ -544,7 +599,7 @@ export default function RequestDetailPage() {
                     Processing...
                   </>
                 ) : (
-                  actionType === 'forward' ? 'Forward' : actionType === 'reject' ? 'Reject' : 'Approve'
+                  actionType === 'forward' ? 'Forward' : actionType === 'return' ? 'Return' : actionType === 'reject' ? 'Reject' : 'Approve'
                 )}
               </Button>
             </div>

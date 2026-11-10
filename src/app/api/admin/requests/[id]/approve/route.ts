@@ -70,6 +70,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           'department_head',
           'mechanical_request_handler',
           'electrical_mechanical_handler',
+          'assistant_director_operations',
+          'director_operations',
         ]);
 
       if (orgUserResult.data) {

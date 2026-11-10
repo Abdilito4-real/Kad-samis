@@ -31,7 +31,8 @@ interface ManualRequest {
   organization_id: string;
   created_by: string;
   source_mda: string;
-  workflow_stage: "electrical_mechanical";
+  workflow_stage: "assistant_director_operations";
+  workflow_owner_id: string;
   organizations?: { name: string } | null;
 }
 
@@ -77,7 +78,7 @@ export function ManualMdaRequestDialog({ onCreated }: { onCreated: (request: Man
       if (result.notificationsSent === false) {
         toast.warning("Request sent, but one or more users could not be notified.");
       } else {
-        toast.success("Request sent to the Electrical & Mechanical Handler.");
+        toast.success("Request sent to Assistant Director Operations.");
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to submit manual request.");
@@ -101,7 +102,7 @@ export function ManualMdaRequestDialog({ onCreated }: { onCreated: (request: Man
         <DialogHeader>
           <DialogTitle>Enter manually received MDA request</DialogTitle>
           <DialogDescription>
-            This request will go directly to your organization’s Electrical & Mechanical Request Handler.
+            This request will be sent to Assistant Director Operations for review.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
@@ -156,7 +157,7 @@ export function ManualMdaRequestDialog({ onCreated }: { onCreated: (request: Man
               Cancel
             </Button>
             <Button type="submit" disabled={saving} isLoading={saving} loadingText="Sending request">
-              Send to Electrical & Mechanical
+              Send to Assistant Director Operations
             </Button>
           </div>
         </form>

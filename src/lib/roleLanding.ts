@@ -7,7 +7,13 @@ export function canViewOverview(roleId?: string | null): boolean {
 export function getRoleLandingPath(roleId?: string | null): string {
   if (canViewOverview(roleId)) return "/dashboard";
   if (roleId === "operational_manager") return "/operations";
-  if (roleId === "mechanical_request_handler" || roleId === "electrical_mechanical_handler" || roleId === "maintenance_officer") {
+  if (
+    roleId === "mechanical_request_handler" ||
+    roleId === "electrical_mechanical_handler" ||
+    roleId === "assistant_director_operations" ||
+    roleId === "director_operations" ||
+    roleId === "maintenance_officer"
+  ) {
     return "/requests";
   }
   if (roleId === "inspector") return "/inspections";

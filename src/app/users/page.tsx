@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { ResponsiveGrid } from "@/components/layout/ResponsiveGrid";
 import { MetricCard } from "@/components/layout/MetricCard";
 import { ResponsiveList } from "@/components/layout/ResponsiveList";
-import { AlertCircle, Loader2, Users2, ShieldCheck, UserPlus, Wrench, Plus, X, ChevronRight, Pencil, Check } from "lucide-react";
+import { AlertCircle, Loader2, Users2, ShieldCheck, UserPlus, Wrench, Plus, X, ChevronRight, Pencil, Check, Trash2 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { createClient } from "@/lib/supabase/client";
 import { displayIdentity } from "@/lib/displayIdentity";
@@ -37,8 +37,10 @@ const ADMIN_ROLES = new Set(["super_admin", "agency_admin", "ministry_admin", "d
 const USERNAME_ROLES = new Set(["super_admin", "operational_manager"]);
 const ORGANIZATION_STAFF_ROLES = [
   ["agency_admin", "Organization Admin"],
-  ["mechanical_request_handler", "Mechanical Request Handler"],
-  ["electrical_mechanical_handler", "Electrical & Mechanical Request Handler"],
+  ["mechanical_request_handler", "Mechanical Requests Operator"],
+  ["electrical_mechanical_handler", "Electrical & Mechanical Requests Operator"],
+  ["assistant_director_operations", "Assistant Director Operations"],
+  ["director_operations", "Director Operations"],
   ["custodian", "Custodian"],
 ] as const;
 
@@ -58,14 +60,18 @@ function UserRow({
   user,
   onUsernameSaved,
   canManageRoles = false,
+  canDelete = false,
   currentUserId,
   onRoleSaved,
+  onUserDeleted,
 }: {
   user: Profile;
   onUsernameSaved: (id: string, username: string) => void;
   canManageRoles?: boolean;
+  canDelete?: boolean;
   currentUserId?: string;
   onRoleSaved?: (id: string, role: string) => void;
+  onUserDeleted?: (id: string) => void;
 }) {
   const isOperationalManager = user.role === "operational_manager";
   const usesUsername = user.role ? USERNAME_ROLES.has(user.role) : false;
@@ -76,6 +82,34 @@ function UserRow({
     user.role === "ministry_admin" || user.role === "department_head" ? "agency_admin" : user.role ?? "agency_admin"
   );
   const [savingRole, setSavingRole] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    const identity = displayIdentity(user);
+    if (!window.confirm(`Permanently delete ${identity}? They will lose access, and this action cannot be undone.`)) return;
+
+    setDeleting(true);
+    try {
+      const supabase = createClient();
+      if (!supabase) throw new Error("Supabase client not initialized");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No authenticated session");
+
+      const response = await fetch(`/api/admin/profiles/${user.id}`, {
+        method: "DELETE",
+        headers: { Authorization: "Bearer " + session.access_token },
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to delete user");
+
+      onUserDeleted?.(user.id);
+      toast.success("User deleted", { description: `${identity} can no longer sign in.` });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete user");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleRoleChange = async (role: string) => {
     const previousRole = selectedRole;
@@ -223,21 +257,53 @@ function UserRow({
 
   if (isOperationalManager) {
     return (
-      <Link
-        href={`/operations?operatorId=${user.id}&operatorEmail=${encodeURIComponent(displayIdentity(user))}`}
-        className="flex flex-col gap-2 rounded-2xl border border-border bg-background/70 p-4 transition hover:border-primary/40 hover:bg-primary/5 sm:flex-row sm:items-center sm:justify-between"
-        onClick={(e) => editing && e.preventDefault()}
-      >
-        {identityBlock}
-        {badge}
-      </Link>
+      <div className="flex flex-col gap-2 rounded-2xl border border-border bg-background/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <Link
+          href={`/operations?operatorId=${user.id}&operatorEmail=${encodeURIComponent(displayIdentity(user))}`}
+          className="flex min-w-0 flex-1 flex-col gap-2 transition sm:flex-row sm:items-center sm:justify-between"
+          onClick={(e) => editing && e.preventDefault()}
+        >
+          {identityBlock}
+          {badge}
+        </Link>
+        {canDelete && user.id !== currentUserId && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => void handleDelete()}
+            disabled={deleting}
+            aria-label={`Delete ${displayIdentity(user)}`}
+            title="Delete user"
+            className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          >
+            {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+          </Button>
+        )}
+      </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-border bg-background/70 p-4 sm:flex-row sm:items-center sm:justify-between">
       {identityBlock}
-      {badge}
+      <div className="flex items-center justify-between gap-2">
+        {badge}
+        {canDelete && user.id !== currentUserId && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => void handleDelete()}
+            disabled={deleting}
+            aria-label={`Delete ${displayIdentity(user)}`}
+            title="Delete user"
+            className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          >
+            {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
@@ -299,6 +365,10 @@ export default function UsersPage() {
 
   const handleRoleSaved = (id: string, role: string) => {
     setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)));
+  };
+
+  const handleUserDeleted = (id: string) => {
+    setUsers((prev) => prev.filter((u) => u.id !== id));
   };
 
   const handleAddOperator = async () => {
@@ -566,7 +636,14 @@ export default function UsersPage() {
               ) : (
                 <ResponsiveList>
                   {operationalManagers.map((u) => (
-                    <UserRow key={u.id} user={u} onUsernameSaved={handleUsernameSaved} />
+                    <UserRow
+                      key={u.id}
+                      user={u}
+                      onUsernameSaved={handleUsernameSaved}
+                      canDelete={isSuperAdmin}
+                      currentUserId={user?.id}
+                      onUserDeleted={handleUserDeleted}
+                    />
                   ))}
                 </ResponsiveList>
               )}
@@ -599,8 +676,10 @@ export default function UsersPage() {
                   user={u}
                   onUsernameSaved={handleUsernameSaved}
                   canManageRoles={isOrganizationAdmin}
+                  canDelete={isSuperAdmin || isOrganizationAdmin}
                   currentUserId={user?.id}
                   onRoleSaved={handleRoleSaved}
+                  onUserDeleted={handleUserDeleted}
                 />
               ))}
             </ResponsiveList>
@@ -630,8 +709,10 @@ export default function UsersPage() {
                   user={u}
                   onUsernameSaved={handleUsernameSaved}
                   canManageRoles={isOrganizationAdmin}
+                  canDelete={isSuperAdmin || isOrganizationAdmin}
                   currentUserId={user?.id}
                   onRoleSaved={handleRoleSaved}
+                  onUserDeleted={handleUserDeleted}
                 />
               ))}
             </ResponsiveList>

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Send, Wrench } from "lucide-react";
+import { useAuth } from "@/components/auth-provider";
 
 interface PresetAsset {
   id: string;
@@ -43,6 +44,8 @@ const titleFor = (workType: WorkType, asset: PresetAsset) => {
 };
 
 export function RequestSubmissionForm({ onSuccess, presetAsset }: RequestSubmissionFormProps) {
+  const { user } = useAuth();
+  const isRequestHandler = user?.roleId === "mechanical_request_handler" || user?.roleId === "electrical_mechanical_handler";
   const [workType, setWorkType] = useState<WorkType>("repair");
   const [title, setTitle] = useState(() => titleFor("repair", presetAsset));
   const [description, setDescription] = useState("");
@@ -97,10 +100,14 @@ export function RequestSubmissionForm({ onSuccess, presetAsset }: RequestSubmiss
 
       const result = await response.json();
       if (result.notificationsSent === false) {
-        toast.warning("Request submitted, but the Mechanical Request Handler could not be notified.");
+        toast.warning(isRequestHandler
+          ? "Request submitted, but Assistant Director Operations could not be notified."
+          : "Request submitted, but the Requests Operators could not be notified.");
       } else {
         toast.success("Request submitted", {
-          description: "Sent to the Mechanical Request Handler. It will move through Electrical & Mechanical review to the Agency Admin.",
+          description: isRequestHandler
+            ? "Sent directly to Assistant Director Operations, then Director Operations and the Director General."
+            : "Sent to the Requests Operator queue, then Assistant Director Operations, Director Operations, and the Director General.",
         });
       }
 
@@ -124,7 +131,9 @@ export function RequestSubmissionForm({ onSuccess, presetAsset }: RequestSubmiss
       <div>
         <h3 className="text-lg font-semibold text-foreground">Request Maintenance / Repair</h3>
         <p className="text-sm text-muted-foreground">
-          Starts with the Mechanical Request Handler, then moves to Electrical & Mechanical review and Agency Admin approval. Approved maintenance requests can then be assigned to an Operational Manager.
+          {isRequestHandler
+            ? "Your request goes directly to Assistant Director Operations, then Director Operations and Director General approval."
+            : "Requests are reviewed by a Requests Operator, then Assistant Director Operations, Director Operations, and the Director General. Approved maintenance requests can then be assigned to an Operational Manager."}
         </p>
       </div>
 

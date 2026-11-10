@@ -41,6 +41,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         'agency_admin',
         'mechanical_request_handler',
         'electrical_mechanical_handler',
+        'assistant_director_operations',
+        'director_operations',
         'custodian',
       ];
       if (!organizationRoles.includes(body.role)) {
@@ -153,5 +155,107 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   } catch (error) {
     console.error('Profile update failed', error);
     return NextResponse.json({ error: 'Unable to update profile' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    if (!isValidUuid(id)) {
+      return NextResponse.json({ error: 'Invalid profile ID' }, { status: 400 });
+    }
+
+    let supabase = getSupabaseFromRequest(req);
+    if (!supabase) {
+      supabase = await createServerSideClient();
+    }
+
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY)) {
+      return NextResponse.json({ error: 'Supabase is not configured' }, { status: 500 });
+    }
+
+    const ctx = await getProfile(supabase, req);
+    const isOrganizationAdmin = ['agency_admin', 'ministry_admin', 'department_head'].includes(ctx?.profile?.role ?? '');
+    if (!ctx?.profile || (ctx.profile.role !== 'super_admin' && !isOrganizationAdmin)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+    if (ctx.user.id === id) {
+      return NextResponse.json({ error: 'You cannot delete your own account' }, { status: 400 });
+    }
+
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+    if (!serviceRoleKey) {
+      return NextResponse.json({ error: 'Deleting users requires SUPABASE_SERVICE_ROLE_KEY' }, { status: 503 });
+    }
+
+    const writer = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: target, error: targetError } = await writer
+      .from('profiles')
+      .select('id, email, username, role, organization_id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (targetError) {
+      return NextResponse.json({ error: targetError.message }, { status: 500 });
+    }
+    if (!target) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+    if (isOrganizationAdmin && target.organization_id !== ctx.profile.organization_id) {
+      return NextResponse.json({ error: 'You can only delete users in your organization' }, { status: 403 });
+    }
+
+    const organizationRoles = [
+      'agency_admin',
+      'mechanical_request_handler',
+      'electrical_mechanical_handler',
+      'assistant_director_operations',
+      'director_operations',
+      'custodian',
+    ];
+    if (isOrganizationAdmin && !organizationRoles.includes(target.role ?? '')) {
+      return NextResponse.json({ error: 'Organization admins cannot delete this role' }, { status: 403 });
+    }
+
+    const organizationAdminRoles = ['agency_admin', 'ministry_admin', 'department_head'];
+    if (isOrganizationAdmin && organizationAdminRoles.includes(target.role ?? '')) {
+      const { count, error: adminCountError } = await writer
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', target.organization_id)
+        .in('role', organizationAdminRoles)
+        .neq('id', id);
+
+      if (adminCountError) {
+        return NextResponse.json({ error: adminCountError.message }, { status: 500 });
+      }
+      if (count === 0) {
+        return NextResponse.json({ error: 'Assign another Organization Admin before deleting this user' }, { status: 409 });
+      }
+    }
+
+    const auditWritten = await writeAudit(writer, req, {
+      action: 'delete',
+      table_name: 'profiles',
+      record_id: id,
+      old_values: target,
+      new_values: null,
+      user_id: ctx.user.id,
+    });
+    if (!auditWritten) {
+      return NextResponse.json({ error: 'Unable to record the user deletion' }, { status: 500 });
+    }
+
+    const { error: deleteError } = await writer.auth.admin.deleteUser(id);
+    if (deleteError) {
+      return NextResponse.json({ error: deleteError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Profile deletion failed', error);
+    return NextResponse.json({ error: 'Unable to delete user' }, { status: 500 });
   }
 }

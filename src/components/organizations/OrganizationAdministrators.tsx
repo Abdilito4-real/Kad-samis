@@ -31,8 +31,8 @@ export default function OrganizationAdministrators({ org, onUpdate }: { org: Org
 
   const roleOptions = [
     { value: 'agency_admin', label: 'Organization Admin' },
-    { value: 'mechanical_request_handler', label: 'Mechanical Request Handler' },
-    { value: 'electrical_mechanical_handler', label: 'Electrical & Mechanical Request Handler' },
+    { value: 'mechanical_request_handler', label: 'Mechanical Requests Operator' },
+    { value: 'electrical_mechanical_handler', label: 'Electrical & Mechanical Requests Operator' },
     { value: 'custodian', label: 'Custodian' },
   ];
 

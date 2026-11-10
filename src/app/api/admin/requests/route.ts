@@ -47,18 +47,27 @@ export async function POST(req: Request) {
     }
 
     const serviceClient = getServiceRoleClient(supabase);
-    const { data: mechanicalHandlers, error: handlersError } = await serviceClient
+    const handlerRoles = ['mechanical_request_handler', 'electrical_mechanical_handler'];
+    const isRequestHandler = handlerRoles.includes(ctx.profile.role);
+    const recipientRoles = isRequestHandler ? ['assistant_director_operations'] : handlerRoles;
+    const { data: reviewers, error: reviewersError } = await serviceClient
       .from('profiles')
       .select('id')
       .eq('organization_id', ctx.profile.organization_id)
-      .eq('role', 'mechanical_request_handler');
-    if (handlersError) {
-      console.error('Mechanical request handler lookup failed', handlersError);
-      return NextResponse.json({ error: 'Unable to find the Mechanical Request Handler' }, { status: 500 });
-    }
-    if (!mechanicalHandlers?.length) {
+      .in('role', recipientRoles);
+    if (reviewersError) {
+      console.error('Initial request reviewer lookup failed', reviewersError);
       return NextResponse.json({
-        error: 'Ask your Organization Admin to assign a Mechanical Request Handler before submitting requests',
+        error: isRequestHandler
+          ? 'Unable to find Assistant Director Operations'
+          : 'Unable to find the Requests Operator team',
+      }, { status: 500 });
+    }
+    if (!reviewers?.length) {
+      return NextResponse.json({
+        error: isRequestHandler
+          ? 'No Assistant Director Operations user is assigned to this organization'
+          : 'Ask your Organization Admin to assign a Requests Operator before submitting requests',
       }, { status: 409 });
     }
 
@@ -73,8 +82,9 @@ export async function POST(req: Request) {
         related_asset_id: relatedAssetId || null,
         organization_id: ctx.profile.organization_id,
         created_by: ctx.user?.id,
-        status: 'pending',
-        workflow_stage: 'mechanical',
+        workflow_owner_id: isRequestHandler ? ctx.user.id : null,
+        status: isRequestHandler ? 'escalated' : 'pending',
+        workflow_stage: isRequestHandler ? 'assistant_director_operations' : 'mechanical',
       })
       .select()
       .single();
@@ -88,13 +98,24 @@ export async function POST(req: Request) {
     try {
       notificationsSent = await writeNotifications(
         supabase,
-        mechanicalHandlers.map((handler: { id: string }) => ({
-          user_id: handler.id,
-          type: 'request',
-          title: 'New request received',
-          message: `A new request, "${data.title}", is ready for Mechanical Request Handler review.`,
-          related_request_id: data.id,
-        }))
+        [
+          ...reviewers.map((reviewer: { id: string }) => ({
+            user_id: reviewer.id,
+            type: isRequestHandler ? 'request_handoff' : 'request',
+            title: isRequestHandler ? 'New request from Requests Operator' : 'New request received',
+            message: isRequestHandler
+              ? `The request "${data.title}" was sent to you for Assistant Director Operations review.`
+              : `A new request, "${data.title}", is ready for Requests Operator review.`,
+            related_request_id: data.id,
+          })),
+          ...(isRequestHandler ? [{
+            user_id: ctx.user.id,
+            type: 'request_handoff',
+            title: 'Request sent',
+            message: `"${data.title}" was sent to Assistant Director Operations for review.`,
+            related_request_id: data.id,
+          }] : []),
+        ]
       );
     } catch (notificationError) {
       notificationsSent = false;
@@ -129,6 +150,7 @@ export async function GET(req: Request) {
     const status = url.searchParams.get('status');
     const type = url.searchParams.get('type');
     const queue = url.searchParams.get('queue');
+    const handoffView = url.searchParams.get('view');
 
     // Try to get authenticated client from bearer token first, then fall back to cookies
     let supabase = getSupabaseFromRequest(req);
@@ -172,10 +194,18 @@ export async function GET(req: Request) {
       query = query.eq('organization_id', ctx.profile.organization_id);
     }
 
-    if (ctx.profile.role === 'mechanical_request_handler') {
-      query = query.or('workflow_stage.eq.mechanical,workflow_stage.eq.electrical_mechanical,workflow_stage.eq.agency_admin,workflow_stage.is.null');
-    } else if (ctx.profile.role === 'electrical_mechanical_handler') {
-      query = query.in('workflow_stage', ['electrical_mechanical', 'agency_admin']);
+    if (['mechanical_request_handler', 'electrical_mechanical_handler'].includes(ctx.profile.role)) {
+      query = query.in('workflow_stage', [
+        'mechanical',
+        'electrical_mechanical',
+        'assistant_director_operations',
+        'director_operations',
+        'agency_admin',
+      ]);
+    } else if (ctx.profile.role === 'assistant_director_operations') {
+      query = query.in('workflow_stage', ['assistant_director_operations', 'director_operations', 'agency_admin']);
+    } else if (ctx.profile.role === 'director_operations') {
+      query = query.in('workflow_stage', ['director_operations', 'agency_admin']);
     } else if (queue === 'agency_admin') {
       query = query.eq('workflow_stage', 'agency_admin');
     }
@@ -196,7 +226,24 @@ export async function GET(req: Request) {
       return NextResponse.json({ requests: [] });
     }
 
-    return NextResponse.json({ requests: data ?? [] });
+    const requests = data ?? [];
+    if (['mechanical_request_handler', 'electrical_mechanical_handler'].includes(ctx.profile.role)) {
+      const downstreamStages = ['assistant_director_operations', 'director_operations', 'agency_admin'];
+      const visibleRequests = handoffView === 'sent'
+        ? requests.filter((request) =>
+            request.workflow_owner_id === ctx.user.id && downstreamStages.includes(request.workflow_stage)
+          )
+        : handoffView === 'received'
+          ? requests.filter((request) =>
+              ['mechanical', 'electrical_mechanical'].includes(request.workflow_stage) &&
+              request.status === 'pending' &&
+              (!request.workflow_owner_id || request.workflow_owner_id === ctx.user.id)
+            )
+          : requests;
+      return NextResponse.json({ requests: visibleRequests });
+    }
+
+    return NextResponse.json({ requests });
   } catch (err) {
     console.error('Request list error', err);
     return NextResponse.json({ error: 'Unable to load requests' }, { status: 500 });

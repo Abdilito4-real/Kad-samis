@@ -12,6 +12,8 @@ export type UserRole =
   | "operational_manager"
   | "mechanical_request_handler"
   | "electrical_mechanical_handler"
+  | "assistant_director_operations"
+  | "director_operations"
   | "custodian"
   | "read_only_user";
 

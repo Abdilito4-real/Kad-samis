@@ -35,6 +35,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: 'Request not found' }, { status: 404 });
     }
 
+    const isRequestHandler = ['mechanical_request_handler', 'electrical_mechanical_handler'].includes(ctx.profile.role);
+    if (isRequestHandler &&
+      request.workflow_stage !== 'mechanical' &&
+      request.workflow_stage !== 'electrical_mechanical' &&
+      request.workflow_owner_id !== ctx.user.id) {
+      return NextResponse.json({ error: 'Request not found' }, { status: 404 });
+    }
+    if (isRequestHandler &&
+      request.workflow_owner_id &&
+      request.workflow_owner_id !== ctx.user.id) {
+      return NextResponse.json({ error: 'Request not found' }, { status: 404 });
+    }
+
     // Check permissions: super admin can see all, org admin can see their own org,
     // and an operational_manager can see requests assigned to them.
     const isAssignedOperator = ctx.profile.role === 'operational_manager' && request.assigned_operator_id === ctx.user?.id;

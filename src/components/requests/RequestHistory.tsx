@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, CheckCircle, Clock, XCircle, ArrowUp, Send, ChevronRight, Wrench, Bell } from "lucide-react";
+import { AlertCircle, CheckCircle, Clock, XCircle, ArrowUp, ArrowDownLeft, Send, ChevronRight, Wrench, Bell } from "lucide-react";
 import { StageProgressBar } from "@/components/requests/StageProgressBar";
 import { ManualMdaRequestDialog } from "@/components/requests/ManualMdaRequestDialog";
 import {
@@ -41,10 +41,11 @@ interface Request {
   organization_id: string;
   organizations?: { name: string } | null;
   created_by?: string;
+  workflow_owner_id?: string | null;
   escalated_at?: string;
   escalation_reason?: string;
   current_stage?: "assigned" | "monitoring" | "in_progress" | "completed" | null;
-  workflow_stage?: "mechanical" | "electrical_mechanical" | "agency_admin" | "general_admin" | null;
+  workflow_stage?: "mechanical" | "electrical_mechanical" | "assistant_director_operations" | "director_operations" | "agency_admin" | "general_admin" | null;
   source_mda?: string | null;
 }
 
@@ -93,13 +94,16 @@ const typeLabels: Record<string, string> = {
 export function RequestHistory({ orgId, queue }: RequestHistoryProps) {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const isMechanicalHandler = user?.roleId === "mechanical_request_handler";
-  const isElectricalHandler = user?.roleId === "electrical_mechanical_handler";
+  const isRequestHandler = user?.roleId === "mechanical_request_handler" || user?.roleId === "electrical_mechanical_handler";
+  const isAssistantDirector = user?.roleId === "assistant_director_operations";
+  const isDirectorOperations = user?.roleId === "director_operations";
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<
     "all" | "pending" | "approved" | "rejected" | "escalated" | "in_operation" | "completed"
   >("all");
+  const [handoffView, setHandoffView] = useState<"received" | "sent">("received");
+  const [handoffDirection, setHandoffDirection] = useState<"forward" | "return">("forward");
   const [escalateDialogOpen, setEscalateDialogOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
   const [escalationReason, setEscalationReason] = useState("");
@@ -125,6 +129,7 @@ export function RequestHistory({ orgId, queue }: RequestHistoryProps) {
         const params = new URLSearchParams();
         if (orgId) params.append("orgId", orgId);
         if (queue) params.append("queue", queue);
+        if (isRequestHandler) params.append("view", handoffView);
         if (filter !== "all") params.append("status", filter);
 
         const response = await fetch(`/api/admin/requests?${params.toString()}`, {
@@ -156,10 +161,18 @@ export function RequestHistory({ orgId, queue }: RequestHistoryProps) {
     if (!authLoading && user) {
       loadRequests();
     }
-  }, [authLoading, user, orgId, queue, filter]);
+  }, [authLoading, user, orgId, queue, filter, handoffView, isRequestHandler]);
 
   const handleEscalateClick = (request: Request) => {
     setSelectedRequest(request);
+    setHandoffDirection("forward");
+    setEscalationReason("");
+    setEscalateDialogOpen(true);
+  };
+
+  const handleReturnClick = (request: Request) => {
+    setSelectedRequest(request);
+    setHandoffDirection("return");
     setEscalationReason("");
     setEscalateDialogOpen(true);
   };
@@ -195,6 +208,7 @@ export function RequestHistory({ orgId, queue }: RequestHistoryProps) {
         body: JSON.stringify({
           escalationReason: escalationReason.trim(),
           priority: selectedRequest.priority,
+          direction: handoffDirection,
         }),
       });
 
@@ -205,12 +219,17 @@ export function RequestHistory({ orgId, queue }: RequestHistoryProps) {
 
       const handoffResult = await response.json();
       if (handoffResult.notificationsSent === false) {
-        toast.warning("Request forwarded, but the next handler could not be notified.");
+        toast.warning(`Request ${handoffDirection === "return" ? "returned" : "forwarded"}, but the next reviewer could not be notified.`);
       } else {
-        toast.success("Request forwarded", {
-          description: isMechanicalHandler
-            ? "The Electrical & Mechanical Handler has been notified."
-            : "Agency Admin has been notified.",
+        const target = handoffDirection === "return"
+          ? isAssistantDirector ? "Requests Operators" : "Assistant Director Operations"
+          : isRequestHandler
+            ? "Assistant Director Operations"
+            : isAssistantDirector
+              ? "Director Operations"
+              : "Director General (Agency Admin)";
+        toast.success(handoffDirection === "return" ? "Request returned" : "Request forwarded", {
+          description: `${target} has been notified.`,
         });
       }
 
@@ -221,6 +240,8 @@ export function RequestHistory({ orgId, queue }: RequestHistoryProps) {
       // Reload requests with bearer token
       const params = new URLSearchParams();
       if (orgId) params.append("orgId", orgId);
+      if (queue) params.append("queue", queue);
+      if (isRequestHandler) params.append("view", handoffView);
       if (filter !== "all") params.append("status", filter);
 
       const listResponse = await fetch(`/api/admin/requests?${params.toString()}`, {
@@ -267,7 +288,13 @@ export function RequestHistory({ orgId, queue }: RequestHistoryProps) {
       if (result.notificationsSent === false) {
         toast.warning("Reminder could not be delivered.");
       } else {
-        toast.success(isMechanicalHandler ? "Electrical & Mechanical Handler reminded" : "Agency Admin reminded");
+        toast.success(
+          isRequestHandler
+            ? "Assistant Director Operations reminded"
+            : isAssistantDirector
+              ? "Director Operations reminded"
+              : "Agency Admin reminded"
+        );
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to send reminder");
@@ -277,25 +304,74 @@ export function RequestHistory({ orgId, queue }: RequestHistoryProps) {
   };
 
   const canForward = (request: Request) =>
-    (isMechanicalHandler && request.status === "pending" && (!request.workflow_stage || request.workflow_stage === "mechanical")) ||
-    (isElectricalHandler && request.status === "escalated" && request.workflow_stage === "electrical_mechanical");
+    (isRequestHandler && request.status === "pending" && (!request.workflow_stage || request.workflow_stage === "mechanical" || request.workflow_stage === "electrical_mechanical")) ||
+    (isAssistantDirector && request.status === "escalated" && request.workflow_stage === "assistant_director_operations") ||
+    (isDirectorOperations && request.status === "escalated" && request.workflow_stage === "director_operations");
 
   const canRemind = (request: Request) =>
-    (isMechanicalHandler && request.status === "escalated" && request.workflow_stage === "electrical_mechanical") ||
-    (isElectricalHandler && request.status === "escalated" && request.workflow_stage === "agency_admin");
+    (isRequestHandler && request.status === "escalated" && request.workflow_stage === "assistant_director_operations") ||
+    (isAssistantDirector && request.status === "escalated" && request.workflow_stage === "director_operations") ||
+    (isDirectorOperations && request.status === "escalated" && request.workflow_stage === "agency_admin");
+
+  const canReturn = (request: Request) =>
+    (isAssistantDirector && request.status === "escalated" && request.workflow_stage === "assistant_director_operations") ||
+    (isDirectorOperations && request.status === "escalated" && request.workflow_stage === "director_operations");
+
+  const visibleRequests = requests.filter((request) => {
+    const stage = request.workflow_stage;
+    if (handoffView === "received") {
+      return isRequestHandler
+        ? request.status === "pending" && (!stage || stage === "mechanical" || stage === "electrical_mechanical")
+        : isAssistantDirector
+          ? stage === "assistant_director_operations"
+          : isDirectorOperations
+            ? stage === "director_operations"
+            : true;
+    }
+
+    return isRequestHandler
+      ? handoffView === "sent"
+        ? request.workflow_owner_id === user?.id &&
+          Boolean(stage && !["mechanical", "electrical_mechanical"].includes(stage))
+        : ["mechanical", "electrical_mechanical"].includes(stage ?? "") &&
+          request.status === "pending" &&
+          (!request.workflow_owner_id || request.workflow_owner_id === user?.id)
+      : isAssistantDirector
+        ? stage === "director_operations" || stage === "agency_admin"
+        : isDirectorOperations
+          ? stage === "agency_admin"
+          : true;
+  });
 
   const getRequestStageLabel = (request: Request) => {
-    if (request.workflow_stage === "agency_admin" && request.status === "approved") return "Approved by Agency Admin";
-    if (request.workflow_stage === "agency_admin" && request.status === "rejected") return "Rejected by Agency Admin";
-    if (request.workflow_stage === "mechanical") return "Mechanical Review";
-    if (request.workflow_stage === "electrical_mechanical") return "Electrical & Mechanical Review";
-    if (request.workflow_stage === "agency_admin") return "Awaiting Agency Admin";
+    if (request.workflow_stage === "agency_admin" && request.status === "approved") return "Approved by Director General";
+    if (request.workflow_stage === "agency_admin" && request.status === "rejected") return "Rejected by Director General";
+    if (request.workflow_stage === "mechanical" || request.workflow_stage === "electrical_mechanical") return "Requests Operator Review";
+    if (request.workflow_stage === "assistant_director_operations") return "Assistant Director Operations Review";
+    if (request.workflow_stage === "director_operations") return "Director Operations Review";
+    if (request.workflow_stage === "agency_admin") return "Awaiting Director General";
     if (request.workflow_stage === "general_admin") return "Awaiting General Admin";
     return statusLabels[request.status] ?? request.status.charAt(0).toUpperCase() + request.status.slice(1);
   };
 
   return (
     <div className="space-y-6">
+      {(isRequestHandler || isAssistantDirector || isDirectorOperations) && (
+        <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900">
+          {(["received", "sent"] as const).map((view) => (
+            <Button
+              key={view}
+              type="button"
+              variant={handoffView === view ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setHandoffView(view)}
+              className={handoffView === view ? "bg-emerald-600 capitalize hover:bg-emerald-700" : "capitalize"}
+            >
+              {view}
+            </Button>
+          ))}
+        </div>
+      )}
       <div className="flex flex-wrap gap-2">
         {(["all", "pending", "approved", "rejected", "escalated", "in_operation", "completed"] as const).map((f) => (
           <Button
@@ -310,29 +386,31 @@ export function RequestHistory({ orgId, queue }: RequestHistoryProps) {
           </Button>
         ))}
       </div>
-      {isMechanicalHandler && (
+      {isRequestHandler && (
         <div className="flex justify-end">
           <ManualMdaRequestDialog
             onCreated={(request) => {
               setFilter("all");
+              setHandoffView("sent");
               setRequests((current) => [request, ...current]);
             }}
           />
         </div>
       )}
-
       {loading ? (
         <ResponsiveListSkeleton rows={4} detailCols={3} />
-      ) : requests.length === 0 ? (
+      ) : visibleRequests.length === 0 ? (
         <Card className="p-12 text-center">
           <AlertCircle className="mx-auto h-12 w-12 text-slate-400 mb-4" />
           <p className="text-slate-600 dark:text-slate-400">
-            {filter === "all" ? "No requests yet" : `No ${filter} requests`}
+            {isRequestHandler || isAssistantDirector || isDirectorOperations
+              ? `No ${handoffView} requests${filter === "all" ? "" : ` with ${filter} status`}`
+              : filter === "all" ? "No requests yet" : `No ${filter} requests`}
           </p>
         </Card>
       ) : (
         <ResponsiveList>
-          {requests.map((request) => (
+          {visibleRequests.map((request) => (
             <ResponsiveListRow
               key={request.id}
               onClick={() => router.push(`/requests/${request.id}`)}
@@ -407,7 +485,27 @@ export function RequestHistory({ orgId, queue }: RequestHistoryProps) {
                     className="gap-2 hover:border-purple-400 hover:text-purple-600"
                   >
                     <ArrowUp className="h-4 w-4" />
-                    {isMechanicalHandler ? "Forward to Electrical & Mechanical" : "Send to Agency Admin"}
+                    {isRequestHandler
+                      ? "Forward to Assistant Director Operations"
+                      : isAssistantDirector
+                        ? "Forward to Director Operations"
+                        : "Send to Director General"}
+                  </Button>
+                </div>
+              )}
+              {canReturn(request) && (
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
+                  <Button
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleReturnClick(request);
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 hover:border-amber-400 hover:text-amber-700"
+                  >
+                    <ArrowDownLeft className="h-4 w-4" />
+                    Return to {isAssistantDirector ? "Requests Operators" : "Assistant Director Operations"}
                   </Button>
                 </div>
               )}
@@ -436,11 +534,15 @@ export function RequestHistory({ orgId, queue }: RequestHistoryProps) {
       <Dialog open={escalateDialogOpen} onOpenChange={setEscalateDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Forward Request</DialogTitle>
+            <DialogTitle>{handoffDirection === "return" ? "Return Request" : "Forward Request"}</DialogTitle>
             <DialogDescription>
-              {isMechanicalHandler
-                ? "Add a note for the Electrical & Mechanical Handler."
-                : "Add a note for Agency Admin."}
+              {handoffDirection === "return"
+                ? `Add a handoff note for ${isAssistantDirector ? "the Requests Operators" : "Assistant Director Operations"}.`
+                : isRequestHandler
+                  ? "Add a handoff note for Assistant Director Operations."
+                  : isAssistantDirector
+                    ? "Add a handoff note for Director Operations."
+                    : "Add a handoff note for the Director General (Agency Admin)."}
             </DialogDescription>
           </DialogHeader>
 
@@ -474,11 +576,11 @@ export function RequestHistory({ orgId, queue }: RequestHistoryProps) {
                 onClick={handleEscalateSubmit}
                 disabled={!escalationReason.trim()}
                 isLoading={isEscalating}
-                loadingText="Forwarding..."
+                loadingText={handoffDirection === "return" ? "Returning..." : "Forwarding..."}
                 className="flex-1 bg-purple-600 hover:bg-purple-700"
               >
-                <Send className="mr-2 h-4 w-4" />
-                Forward request
+                {handoffDirection === "return" ? <ArrowDownLeft className="mr-2 h-4 w-4" /> : <Send className="mr-2 h-4 w-4" />}
+                {handoffDirection === "return" ? "Return request" : "Forward request"}
               </Button>
             </div>
           </div>

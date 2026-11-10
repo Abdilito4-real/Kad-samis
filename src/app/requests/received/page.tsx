@@ -30,7 +30,7 @@ export default function AgencyAdminReceivingRequestsPage() {
         <div className="space-y-2">
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Requests to Review</h1>
           <p className="text-slate-600 dark:text-slate-400">
-            Requests forwarded by the Electrical & Mechanical Request Handler for your Agency Admin review.
+            Requests forwarded by Director Operations for your Director General review.
           </p>
         </div>
       </div>

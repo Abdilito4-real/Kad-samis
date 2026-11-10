@@ -102,6 +102,8 @@ export async function POST(req: Request) {
       'agency_admin',
       'mechanical_request_handler',
       'electrical_mechanical_handler',
+      'assistant_director_operations',
+      'director_operations',
       'custodian',
     ];
 

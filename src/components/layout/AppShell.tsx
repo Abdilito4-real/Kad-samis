@@ -68,7 +68,12 @@ const INSPECTOR_BOTTOM_NAV: BottomNavItem[] = [
 function getBottomNavForRole(roleId?: string | null): BottomNavItem[] {
   if (roleId === "operational_manager") return OPERATIONAL_MANAGER_BOTTOM_NAV;
   if (roleId === "super_admin") return SUPER_ADMIN_BOTTOM_NAV;
-  if (roleId === "mechanical_request_handler" || roleId === "electrical_mechanical_handler") {
+  if (
+    roleId === "mechanical_request_handler" ||
+    roleId === "electrical_mechanical_handler" ||
+    roleId === "assistant_director_operations" ||
+    roleId === "director_operations"
+  ) {
     return REQUEST_HANDLER_BOTTOM_NAV;
   }
   if (roleId === "custodian") return CUSTODIAN_BOTTOM_NAV;
